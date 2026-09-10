@@ -2,134 +2,170 @@
 
 JanDrishti is an AI-powered MPLADS (Member of Parliament Local Area Development Scheme) monitoring platform that analyzes MPLADS work allocations, execution timelines, and financial expenditure data to identify unusual patterns, potential duplicate/similar works, data-quality issues, and composite risk levels.
 
-> **Note on Risk Assessment:** JanDrishti provides data-driven risk indicators and investigation support. Anomaly flags and risk scores indicate statistical outliers and data discrepancies for human review; they do **not** claim that an anomaly proves fraud.
+> **Important Note on Risk Assessment:** JanDrishti provides data-driven risk indicators and investigation support. Anomaly flags and risk scores indicate statistical outliers and data discrepancies for human review; they do **not** claim that an anomaly constitutes fraud.
+>
+> *Note on Scope:* ML anomaly detection, duplicate detection, risk scoring calculations, and agentic AI are separate upcoming modules. This stage provides the validated, normalized **Data Foundation**.
 
 ---
 
-## 1. High-Level Architecture
+## 1. High-Level Architecture & Ingestion Flow
 
-* **Backend:** Python 3.12, FastAPI, SQLAlchemy ORM, Pydantic data validation.
-* **Database:** PostgreSQL 16 (persisted via Docker named volume).
-* **Machine Learning & Analytics:** Scikit-learn, Pandas, NumPy (anomaly detection, duplicate work detection, composite risk calculation).
-* **Frontend:** React 18, Vite, Recharts (analytics charts), React Leaflet (geo-spatial map visualization).
-* **Orchestration:** Docker & Docker Compose.
+```
+[ Real MPLADS Sources ]
+  ├── Source A: Empowered Indian APIs (Itemized Completed Works & MP Financial Summaries)
+  └── Source B: MoSPI eSAKSHI Portal (Public REST Endpoints for Macro Dashboard Tiles & State Metadata)
+               │
+               ▼
+[ Source Adapters (app/services/ingestion/sources/) ]
+  ├── empowered_indian.py  --> Pagination, Retries, Raw JSON Archival (data/raw/)
+  └── mospi_esakshi.py     --> Public Dashboard Endpoints & Raw JSON Archival (data/raw/)
+               │
+               ▼
+[ Normalization & PII Sanitization (app/services/ingestion/validation.py) ]
+  ├── Strips/Redacts Incidental Phone Numbers & Emails
+  ├── Safely Parses Datetimes, Numeric Amounts & Nulls (No Fake Defaults)
+               │
+               ▼
+[ Ingestion Service (app/services/ingestion/service.py) ]
+  └── Idempotent PostgreSQL Upsert (No Duplicate Records on Repeat Ingestion)
+               │
+               ▼
+[ PostgreSQL 16 Database ]
+  ├── works (Itemized completed works)
+  ├── mp_financial_summaries (MP financial, recommended & completed works metrics)
+  └── macro_metrics (National MoSPI macro indicators)
+               │
+               ▼
+[ FastAPI REST API Layer (app/routes/) ]
+  ├── GET /health & GET /
+  ├── GET /api/works & GET /api/works/{work_id}
+  ├── GET /api/mps
+  └── GET /api/dashboard (Real SQL Aggregations)
+```
 
 ---
 
-## 2. Prerequisites
+## 2. Data Sources & Official Investigation
 
-Ensure you have the following installed on your development machine:
-* [Docker Desktop](https://www.docker.com/products/docker-desktop/) (includes Docker Compose)
-* [Node.js](https://nodejs.org/) v18+ (for local frontend development outside Docker)
-* [Python](https://www.python.org/) 3.12 (for local backend development outside Docker)
+### Source A — Empowered Indian Public APIs
+* **Completed Works:** `https://api.empoweredindian.in/api/works/completed?constituency=SHAHJAHANPUR&page=1&limit=100`
+* **Individual Work Item:** `https://api.empoweredindian.in/api/works/completed/{mongo_id}`
+* **MP Summaries:** `https://api.empoweredindian.in/api/summary/mps?page=1&limit=800`
+* **Characteristics:** Provides itemized completed works with descriptions, cost, completion dates, constituency, MP details, category, district, and location. Provides 770+ MP performance summaries across Lok Sabha and Rajya Sabha.
+
+### Source B — Official MoSPI / e-SAKSHI Portal (`https://mplads.mospi.gov.in`)
+* **Investigation Result:** MoSPI's official pre-login dashboard exposes unauthenticated public REST endpoints:
+  * `POST https://mplads.mospi.gov.in/rest/PreLoginDashboardData/getTilesData` (Allocated Limit, Expenditure, Recommended Works, Sanctioned Works, Completed Works)
+  * `POST https://mplads.mospi.gov.in/rest/PreLoginDashboardData/getStateData` (State catalog)
+  * `POST https://mplads.mospi.gov.in/rest/PreLoginDashboardData/getgraphdata` (Aggregated time series / categories)
+* **Adapter Status:** Implemented as `MoSPIeSAKSHIAdapter`. It fetches and persists national macro benchmark indicators. Granular itemized work items on the portal are aggregated behind pre-login UI scripts.
 
 ---
 
-## 3. Environment Setup
+## 3. Database Schema
 
-Copy the sample environment file to `.env`:
+The database models are designed strictly around actual fields discovered from the real APIs without fabricating values:
 
+### `works`
+* `id` (Integer PK)
+* `work_id` (BigInteger, eSAKSHI Work ID)
+* `source_id` (String, MongoDB ObjectId)
+* `work_description` / `work_description_hi` (Text, PII-sanitized)
+* `cost` (Float)
+* `completion_date` (DateTime) / `completion_year` (Integer)
+* `mp_name` / `mp_name_hi` (String, indexed)
+* `constituency` / `constituency_hi` (String, indexed)
+* `state` / `state_hi` (String, indexed)
+* `house` (String)
+* `category` / `category_hi` (String, indexed)
+* `district` / `district_hi` (String, indexed)
+* `location` / `location_hi` (Text, PII-sanitized)
+* `beneficiaries` (Integer)
+* `implementing_agency` / `implementing_agency_hi` (String, nullable)
+* `quality_rating` (Float, nullable)
+* `latitude` / `longitude` (Float, nullable)
+* `photos_metadata` / `impact_metrics` (JSON, nullable)
+* `source` (String, e.g. `empowered_indian`)
+* `raw_data_path` (String)
+* `created_at` / `last_updated` (DateTime)
+
+### `mp_financial_summaries`
+* `id` (Integer PK)
+* `source_id` (String, indexed)
+* `mp_name` (String, indexed)
+* `house` (String)
+* `state` / `constituency` (String, indexed)
+* `allocated_amount` (Float)
+* `total_expenditure` (Float)
+* `total_recommended_amount` (Float)
+* `utilization_percentage` / `recommendation_utilization_percentage` / `expenditure_percentage` (Float)
+* `utilization_definition` (String)
+* `completed_works_count` / `recommended_works_count` / `pending_works` (Integer)
+* `completion_rate` / `payment_gap_percentage` (Float)
+* `unspent_amount` / `unpaid_balance` (Float)
+* `completed_works_value` / `total_completed_amount` / `in_progress_payments` (Float)
+* `source` (String)
+* `created_at` / `last_updated` (DateTime)
+
+### `macro_metrics`
+* `id` (Integer PK)
+* `metric_key` (String, Unique)
+* `metric_name` (String)
+* `metric_value_raw` / `metric_value_crores` (String)
+* `metric_count` (BigInteger)
+* `source` (String)
+* `last_updated` (DateTime)
+
+---
+
+## 4. Quickstart & Setup
+
+### Prerequisites
+* [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Compose v2)
+* Python 3.12 (if running outside Docker)
+* Node.js v18+ (if running outside Docker)
+
+### 1. Configure Environment
 ```bash
 cp .env.example .env
 ```
 
-Adjust the values in `.env` if necessary.
-
----
-
-## 4. Running the Application with Docker
-
-Start all services (PostgreSQL 16, FastAPI backend, and React frontend) with a single command:
-
-```bash
-docker compose up --build
-```
-
-To run in the background (detached mode):
-
+### 2. Start Application Containers
 ```bash
 docker compose up -d --build
 ```
 
-To stop all running services:
+### 3. Run Data Ingestion
+Run the ingestion CLI inside the backend container to pull live data from Empowered Indian and MoSPI eSAKSHI:
 
 ```bash
-docker compose down
+# Ingest all data (MoSPI macro metrics, 770+ MP summaries, and Shahjahanpur completed works)
+docker compose exec backend python ingest.py --all
+
+# Or ingest a specific constituency:
+docker compose exec backend python ingest.py --constituency SHAHJAHANPUR
 ```
 
 ---
 
-## 5. Application URLs
+## 5. API Endpoints
 
-* **Frontend Application:** [http://localhost:5173](http://localhost:5173)
-* **Backend API Root:** [http://localhost:8000](http://localhost:8000)
-* **Interactive Swagger UI (API Docs):** [http://localhost:8000/docs](http://localhost:8000/docs)
-* **Alternative API Docs (ReDoc):** [http://localhost:8000/redoc](http://localhost:8000/redoc)
-* **PostgreSQL (Host Port):** `localhost:5433` (avoiding local port 5432 conflicts)
+Interactive Swagger API docs are available at **[http://localhost:8000/docs](http://localhost:8000/docs)**.
 
----
-
-## 6. Project Structure
-
-```
-JanDrishti/
-├── backend/
-│   ├── app/
-│   │   ├── __init__.py
-│   │   ├── config.py             # Environment & settings configuration
-│   │   ├── database.py           # SQLAlchemy engine & session dependency
-│   │   ├── main.py               # FastAPI entrypoint, middleware, routes
-│   │   ├── models/               # SQLAlchemy ORM models
-│   │   │   └── __init__.py
-│   │   ├── schemas/              # Pydantic schemas for data validation
-│   │   │   └── __init__.py
-│   │   ├── routes/               # API endpoint route modules
-│   │   │   └── __init__.py
-│   │   ├── services/             # Core business logic
-│   │   │   ├── __init__.py
-│   │   │   ├── ingestion/        # MPLADS data extraction & loading
-│   │   │   ├── anomaly/          # Anomaly detection logic
-│   │   │   ├── duplicate/        # Duplicate work identification
-│   │   │   ├── risk/             # Composite risk calculation
-│   │   │   └── agent/            # Investigation assistant services
-│   │   └── utils/                # Helper functions & utilities
-│   │       └── __init__.py
-│   ├── requirements.txt          # Python dependencies
-│   └── Dockerfile
-│
-├── frontend/
-│   ├── src/
-│   │   ├── components/           # Reusable UI components
-│   │   ├── pages/                # Page views
-│   │   ├── services/             # API client & services
-│   │   ├── App.jsx               # Main React component & health check
-│   │   ├── main.jsx              # Vite React DOM entry
-│   │   └── index.css             # Base styles
-│   ├── index.html
-│   ├── vite.config.js
-│   ├── package.json
-│   └── Dockerfile
-│
-├── ml/
-│   ├── __init__.py
-│   ├── anomaly_detection.py      # Statistical & ML anomaly detection pipeline
-│   ├── duplicate_detection.py    # Text & geospatial similarity detection
-│   └── risk_engine.py            # Composite risk calculation engine
-│
-├── data/
-│   ├── raw/                      # Unprocessed MPLADS datasets
-│   └── processed/                # Cleaned & feature-engineered data
-│
-├── docker-compose.yml            # Multi-container setup (DB, Backend, Frontend)
-├── .env.example                  # Environment variable template
-├── .gitignore                    # Git ignore rules
-└── README.md                     # Project overview & developer guide
-```
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/health` | Service health status |
+| `GET` | `/` | API status and root information |
+| `GET` | `/api/works` | Paginated list of works (Filters: `constituency`, `state`, `category`, `page`, `limit`) |
+| `GET` | `/api/works/{work_id}` | Detailed record for a single work item (by `work_id` or `source_id`) |
+| `GET` | `/api/mps` | Paginated MP financial summaries (Filters: `constituency`, `state`, `house`, `page`, `limit`) |
+| `GET` | `/api/dashboard` | Live aggregate analytics computed directly from stored PostgreSQL records |
 
 ---
 
-## 7. Development Guidelines
+## 6. Current Limitations & Future Data Requirements
 
-* **Backend Development:** Place new route handlers in `backend/app/routes/`, models in `backend/app/models/`, and schemas in `backend/app/schemas/`.
-* **ML Pipelines:** Implement model training, scoring, and evaluation in `ml/`. Export reusable scoring functions to `backend/app/services/`.
-* **Frontend Components:** Build UI widgets and data tables in `frontend/src/components/`, and integrate API calls through `frontend/src/services/`.
+* **Itemized Works Granularity:** Current Empowered Indian public APIs provide completed works for specific constituencies. Ingestion of ongoing/sanctioned individual work items is supported by the data schema as new source endpoints become available.
+* **Cost Anomaly vs Cost Overrun:** The currently available data provides actual final completed cost. Because initial sanctioned estimates at the itemized level are not consistently exposed in the public completed works feed, cost variance analysis is categorized as **Cost Anomaly** detection rather than claiming "cost overrun".
+* **Transaction-Level Payments:** MP summaries supply macro expenditure and in-progress payments, but not individual contractor invoice timestamps. Full payment delay analytics will plug into the adapter architecture when invoice-level feeds are connected.
+* **Incidental PII:** Automatic regex sanitization protects incidental phone numbers and emails in descriptions/locations before storage and presentation.

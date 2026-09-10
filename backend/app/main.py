@@ -1,10 +1,41 @@
+import logging
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+from app.database import engine, Base
+import app.models  # Ensures all models are registered on Base.metadata
+from app.routes.works import router as works_router
+from app.routes.mps import router as mps_router
+from app.routes.dashboard import router as dashboard_router
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+)
+logger = logging.getLogger("jandrishti.app")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: ensure database tables exist
+    logger.info("Initializing database schema on startup...")
+    try:
+        Base.metadata.create_all(bind=engine)
+        logger.info("Database schema initialized successfully.")
+    except Exception as e:
+        logger.error(f"Error creating database tables on startup: {e}")
+    yield
+    # Shutdown
+    logger.info("JanDrishti backend shutting down.")
+
 
 app = FastAPI(
     title="JanDrishti API",
     description="AI-powered MPLADS Risk Monitoring & Anomaly Detection Platform",
-    version="0.1.0"
+    version="0.1.0",
+    lifespan=lifespan
 )
 
 # Configure CORS
@@ -15,6 +46,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Register API Routers under /api
+app.include_router(works_router, prefix="/api")
+app.include_router(mps_router, prefix="/api")
+app.include_router(dashboard_router, prefix="/api")
 
 
 @app.get("/")

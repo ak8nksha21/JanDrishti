@@ -48,6 +48,12 @@ dist-ssr/
 ehthumbs.db
 Thumbs.db
 
+# Data & Raw archives
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+
 # IDE
 .idea/
 .vscode/
