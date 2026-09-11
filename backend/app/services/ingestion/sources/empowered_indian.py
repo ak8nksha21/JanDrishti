@@ -37,14 +37,18 @@ class EmpoweredIndianAdapter:
     def fetch_completed_works(
         self,
         constituency: Optional[str] = None,
+        state: Optional[str] = None,
         page: int = 1,
         limit: int = 100
     ) -> Dict[str, Any]:
-        """Fetch a single paginated page of completed works."""
+        """Fetch a single paginated page of completed works with optional constituency/state filter."""
         url = f"{self.BASE_URL}/works/completed"
-        params: Dict[str, Any] = {"page": page, "limit": limit}
+        safe_limit = min(max(1, limit), 100)
+        params: Dict[str, Any] = {"page": page, "limit": safe_limit}
         if constituency:
-            params["constituency"] = constituency
+            params["constituency"] = constituency.strip()
+        if state:
+            params["state"] = state.strip()
 
         headers = {"User-Agent": "JanDrishti-Ingestion-Engine/1.0"}
         try:
@@ -63,27 +67,38 @@ class EmpoweredIndianAdapter:
     def fetch_all_completed_works(
         self,
         constituency: Optional[str] = None,
+        state: Optional[str] = None,
         max_pages: Optional[int] = None,
         page_limit: int = 100
     ) -> (List[Dict[str, Any]], str):
         """
-        Fetch all pages of completed works for a constituency (or nationally)
+        Fetch paginated completed works for a constituency, state, or nationally
         and preserve the combined raw dataset.
         """
         all_works: List[Dict[str, Any]] = []
         current_page = 1
         total_pages = 1
+        safe_page_limit = min(max(1, page_limit), 100)
 
-        logger.info(f"Starting completed works fetch for constituency={constituency}")
+        scope_desc = f"constituency={constituency}" if constituency else (f"state={state}" if state else "national")
+        logger.info(f"Starting completed works fetch (scope={scope_desc}, max_pages={max_pages})")
+
         while current_page <= total_pages:
             if max_pages and current_page > max_pages:
                 break
 
-            resp_data = self.fetch_completed_works(
-                constituency=constituency,
-                page=current_page,
-                limit=page_limit
-            )
+            try:
+                resp_data = self.fetch_completed_works(
+                    constituency=constituency,
+                    state=state,
+                    page=current_page,
+                    limit=safe_page_limit
+                )
+            except Exception as page_err:
+                logger.error(f"Failed fetching page {current_page} for {scope_desc}: {page_err}")
+                if all_works:
+                    break
+                raise
 
             data_section = resp_data.get("data", {})
             works = data_section.get("completedWorks", [])
@@ -101,7 +116,15 @@ class EmpoweredIndianAdapter:
                 break
             current_page += 1
 
-        prefix = f"completed_works_{constituency.lower()}" if constituency else "completed_works_national"
+        if constituency:
+            clean_name = "".join(c if c.isalnum() else "_" for c in constituency.lower())
+            prefix = f"completed_works_constituency_{clean_name}"
+        elif state:
+            clean_name = "".join(c if c.isalnum() else "_" for c in state.lower())
+            prefix = f"completed_works_state_{clean_name}"
+        else:
+            prefix = "completed_works_national"
+
         raw_filepath = self._save_raw(prefix, all_works)
         return all_works, raw_filepath
 
