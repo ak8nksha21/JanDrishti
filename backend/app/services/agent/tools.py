@@ -234,13 +234,13 @@ def _try_risk_engine(work: Work, db: Session, signals: Dict[str, float]) -> Opti
                 risk_level = res.get("risk_level")
                 if not risk_level:
                     if overall_score <= 30.0:
-                        risk_level = "LOW"
+                        risk_level = "Low"
                     elif overall_score <= 60.0:
-                        risk_level = "MEDIUM"
+                        risk_level = "Medium"
                     elif overall_score <= 80.0:
-                        risk_level = "HIGH"
+                        risk_level = "High"
                     else:
-                        risk_level = "CRITICAL"
+                        risk_level = "Critical"
 
                 return {
                     "overall_score": overall_score,
@@ -267,13 +267,13 @@ def _try_risk_engine(work: Work, db: Session, signals: Dict[str, float]) -> Opti
                     risk_level = rec.get("risk_level")
                     if not risk_level:
                         if overall_score <= 30.0:
-                            risk_level = "LOW"
+                            risk_level = "Low"
                         elif overall_score <= 60.0:
-                            risk_level = "MEDIUM"
+                            risk_level = "Medium"
                         elif overall_score <= 80.0:
-                            risk_level = "HIGH"
+                            risk_level = "High"
                         else:
-                            risk_level = "CRITICAL"
+                            risk_level = "Critical"
                     return {
                         "overall_score": overall_score,
                         "risk_level": risk_level,
@@ -301,6 +301,9 @@ class InvestigationTools:
     Provides isolated, deterministic evidence extraction methods that query
     live PostgreSQL data and expose clean interfaces for teammate detection modules.
     """
+
+    def __init__(self, db: Optional[Session] = None):
+        self.db = db
 
     # =========================================================================
     # TOOL 1: get_work_details
@@ -803,13 +806,13 @@ class InvestigationTools:
 
         # Map to PRD Risk Bands
         if overall_score <= 30.0:
-            risk_level = "LOW"
+            risk_level = "Low"
         elif overall_score <= 60.0:
-            risk_level = "MEDIUM"
+            risk_level = "Medium"
         elif overall_score <= 80.0:
-            risk_level = "HIGH"
+            risk_level = "High"
         else:
-            risk_level = "CRITICAL"
+            risk_level = "Critical"
 
         # Identify contributing signals
         contributing_signals = {}

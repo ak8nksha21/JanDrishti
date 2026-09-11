@@ -164,7 +164,7 @@ class TestInvestigationAgent(unittest.TestCase):
         self.assertIn("overall_score", res)
         self.assertIn("risk_level", res)
         self.assertIn("weights", res)
-        self.assertEqual(res.get("engine_mode"), "preliminary_prd_weighted_fallback")
+        self.assertEqual(res.get("engine_mode"), "risk_engine")
 
         expected_weights = {
             "ml_anomaly_score": 0.25,
@@ -177,9 +177,9 @@ class TestInvestigationAgent(unittest.TestCase):
         self.assertEqual(res["weights"], expected_weights)
 
         # Expected score: 50*0.25 + 60*0.25 + 40*0.20 + 30*0.15 + 20*0.10 + 10*0.05
-        # = 12.5 + 15.0 + 8.0 + 4.5 + 2.0 + 0.5 = 42.5 -> MEDIUM
+        # = 12.5 + 15.0 + 8.0 + 4.5 + 2.0 + 0.5 = 42.5 -> Medium
         self.assertEqual(res["overall_score"], 42.5)
-        self.assertEqual(res["risk_level"], "MEDIUM")
+        self.assertEqual(res["risk_level"], "Medium")
 
     # =========================================================================
     # 9. Complete Agent Investigation Orchestration & Synthesis
@@ -190,7 +190,7 @@ class TestInvestigationAgent(unittest.TestCase):
 
         self.assertIsInstance(response, InvestigationResponse)
         self.assertEqual(response.work_id, self.work.work_id or self.work.id)
-        self.assertIn(response.risk_level, ["LOW", "MEDIUM", "HIGH", "CRITICAL"])
+        self.assertIn(response.risk_level, ["Low", "Medium", "High", "Critical"])
         self.assertGreaterEqual(response.overall_score, 0.0)
         self.assertLessEqual(response.overall_score, 100.0)
         self.assertGreater(len(response.primary_reasons), 0)
@@ -208,7 +208,7 @@ class TestInvestigationAgent(unittest.TestCase):
             data = resp.json()
 
             self.assertEqual(data["work_id"], lookup_id)
-            self.assertIn(data["risk_level"], ["LOW", "MEDIUM", "HIGH", "CRITICAL"])
+            self.assertIn(data["risk_level"], ["Low", "Medium", "High", "Critical"])
             self.assertIn("signal_breakdown", data)
             self.assertIn("recommended_actions", data)
             self.assertIn("primary_reasons", data)
@@ -291,24 +291,24 @@ class TestInvestigationAgent(unittest.TestCase):
     # 15. Risk Band Mapping & Range Checks
     # =========================================================================
     def test_15_risk_band_mapping(self):
-        # 0 - 30: LOW
+        # 0 - 30: Low
         r_low = InvestigationTools.get_risk_breakdown(self.work, self.db, {"ml_anomaly_score": 10.0, "cost_score": 10.0, "duplicate_score": 10.0, "utilization_score": 10.0, "geographic_score": 10.0, "data_quality_score": 10.0})
-        self.assertEqual(r_low["risk_level"], "LOW")
+        self.assertEqual(r_low["risk_level"], "Low")
         self.assertEqual(r_low["overall_score"], 10.0)
 
-        # 31 - 60: MEDIUM
+        # 31 - 60: Medium
         r_med = InvestigationTools.get_risk_breakdown(self.work, self.db, {"ml_anomaly_score": 50.0, "cost_score": 50.0, "duplicate_score": 50.0, "utilization_score": 50.0, "geographic_score": 50.0, "data_quality_score": 50.0})
-        self.assertEqual(r_med["risk_level"], "MEDIUM")
+        self.assertEqual(r_med["risk_level"], "Medium")
         self.assertEqual(r_med["overall_score"], 50.0)
 
-        # 61 - 80: HIGH
+        # 61 - 80: High
         r_high = InvestigationTools.get_risk_breakdown(self.work, self.db, {"ml_anomaly_score": 75.0, "cost_score": 75.0, "duplicate_score": 75.0, "utilization_score": 75.0, "geographic_score": 75.0, "data_quality_score": 75.0})
-        self.assertEqual(r_high["risk_level"], "HIGH")
+        self.assertEqual(r_high["risk_level"], "High")
         self.assertEqual(r_high["overall_score"], 75.0)
 
-        # 81 - 100: CRITICAL
+        # 81 - 100: Critical
         r_crit = InvestigationTools.get_risk_breakdown(self.work, self.db, {"ml_anomaly_score": 95.0, "cost_score": 95.0, "duplicate_score": 95.0, "utilization_score": 95.0, "geographic_score": 95.0, "data_quality_score": 95.0})
-        self.assertEqual(r_crit["risk_level"], "CRITICAL")
+        self.assertEqual(r_crit["risk_level"], "Critical")
         self.assertEqual(r_crit["overall_score"], 95.0)
 
     # =========================================================================
@@ -373,12 +373,14 @@ class TestInvestigationAgent(unittest.TestCase):
     # =========================================================================
     # 20. Jayant Adapter: Fallback Mode
     # =========================================================================
-    def test_20_risk_engine_fallback_mode(self):
+    @patch("app.services.agent.tools._get_risk_engine_class", return_value=None)
+    def test_20_risk_engine_fallback_mode(self, mock_get_cls):
         """Verify get_risk_breakdown uses preliminary_prd_weighted_fallback when RiskEngine is un-scored."""
         signals = {"ml_anomaly_score": 40.0, "cost_score": 40.0, "duplicate_score": 40.0, "utilization_score": 40.0, "geographic_score": 40.0, "data_quality_score": 40.0}
         res = InvestigationTools.get_risk_breakdown(self.work, self.db, signals)
         self.assertEqual(res["engine_mode"], "preliminary_prd_weighted_fallback")
         self.assertEqual(res["overall_score"], 40.0)
+        self.assertEqual(res["risk_level"], "Medium")
 
     # =========================================================================
     # 21. Jayant Adapter: Active Delegation Mode

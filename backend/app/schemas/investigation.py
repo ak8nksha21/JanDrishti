@@ -45,7 +45,7 @@ class InvestigationResponse(BaseModel):
     category: Optional[str] = None
     cost: Optional[float] = None
 
-    risk_level: str = Field(..., description="Risk tier: LOW (0-30), MEDIUM (31-60), HIGH (61-80), CRITICAL (81-100)")
+    risk_level: str = Field(..., description="Risk tier: Low (0-30), Medium (31-60), High (61-80), Critical (81-100)")
     overall_score: float = Field(..., ge=0.0, le=100.0, description="Composite weighted risk score (0-100)")
 
     summary: str = Field(..., description="High-level synthesis summary using safe, objective language")

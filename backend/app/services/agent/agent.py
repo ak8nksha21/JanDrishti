@@ -206,9 +206,10 @@ class InvestigationAgent:
         # =====================================================================
         # Step 7: Formulate Safe Summary
         # =====================================================================
-        if risk_level in ["CRITICAL", "HIGH"]:
+        normalized_risk = str(risk_level).upper() if risk_level else "LOW"
+        if normalized_risk in ["CRITICAL", "HIGH"]:
             summary = "Potential irregularity requiring verification. Elevated risk indicators identified across cost and administrative patterns."
-        elif risk_level == "MEDIUM":
+        elif normalized_risk == "MEDIUM":
             summary = "Manual verification recommended. Moderate statistical variations observed requiring routine field review."
         else:
             summary = "Standard parameters observed. Work metrics align with expected statistical baselines."
