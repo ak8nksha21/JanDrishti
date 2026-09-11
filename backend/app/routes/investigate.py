@@ -1,11 +1,18 @@
-from fastapi import APIRouter, Depends, HTTPException
+import logging
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 
 from app.database import get_db
-from app.services.agent.investigator import AIAgentInvestigator
+from app.models.work import Work
+from app.schemas.investigation import InvestigationResponse
 from app.schemas.agent import InvestigationResult, InvestigationRequest
+from app.services.agent.agent import InvestigationAgent
+from app.services.agent.investigator import AIAgentInvestigator
 
-router = APIRouter(prefix="/investigate", tags=["AI Investigation Agent"])
+logger = logging.getLogger("jandrishti.routes.investigate")
+
+router = APIRouter(prefix="/investigate", tags=["Investigation Agent"])
 
 
 @router.post("/brief", response_model=InvestigationResult)
@@ -57,3 +64,40 @@ def list_investigation_tools():
             }
         ]
     }
+
+
+@router.post("/{work_id}", response_model=InvestigationResponse, status_code=status.HTTP_200_OK)
+def investigate_work(
+    work_id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Trigger an AI-driven investigation on an individual MPLADS work item.
+
+    Orchestrates evidence gathering across 8 structured investigation tools,
+    computes composite risk scores, and synthesizes actionable verification
+    checklists for inspection officers.
+    """
+    logger.info(f"Received investigation request for work_id='{work_id}'")
+    work = None
+
+    # Polymorphic lookup: eSAKSHI work_id or internal database ID
+    if work_id.isdigit():
+        numeric_id = int(work_id)
+        work = db.query(Work).filter(
+            or_(Work.work_id == numeric_id, Work.id == numeric_id)
+        ).first()
+
+    # Fallback to source_id (MongoDB hex string)
+    if not work:
+        work = db.query(Work).filter(Work.source_id == work_id).first()
+
+    if not work:
+        logger.warning(f"Work identifier '{work_id}' not found in database.")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Work with identifier '{work_id}' was not found in the database."
+        )
+
+    agent = InvestigationAgent(db=db)
+    return agent.investigate(work)
