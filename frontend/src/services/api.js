@@ -203,6 +203,13 @@ export async function getMPs(params = {}) {
   ) {
     cleanParams.house = params.house.trim();
   }
+  if (typeof params.search === 'string' && params.search.trim()) {
+    cleanParams.search = params.search.trim();
+  } else if (typeof params.searchQuery === 'string' && params.searchQuery.trim()) {
+    cleanParams.search = params.searchQuery.trim();
+  } else if (typeof params.q === 'string' && params.q.trim()) {
+    cleanParams.search = params.q.trim();
+  }
 
   const response = await api.get('/mps', { params: cleanParams });
   return response.data;

@@ -2,6 +2,7 @@ import math
 from typing import Optional
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 
 from app.database import get_db
 from app.models.mp_summary import MPFinancialSummary
@@ -13,10 +14,11 @@ router = APIRouter(prefix="/mps", tags=["MPs"])
 @router.get("", response_model=PaginatedMPsResponse)
 def get_mps(
     page: int = Query(1, ge=1, description="Page number"),
-    limit: int = Query(20, ge=1, le=100, description="Items per page"),
+    limit: int = Query(20, ge=1, le=1000, description="Items per page"),
     constituency: Optional[str] = Query(None, description="Filter by constituency name"),
     state: Optional[str] = Query(None, description="Filter by state name"),
     house: Optional[str] = Query(None, description="Filter by house (Lok Sabha / Rajya Sabha)"),
+    search: Optional[str] = Query(None, description="Search across MP name, constituency, or state"),
     db: Session = Depends(get_db)
 ):
     """
@@ -24,12 +26,22 @@ def get_mps(
     """
     query = db.query(MPFinancialSummary)
 
-    if constituency:
+    if constituency and constituency.strip():
         query = query.filter(MPFinancialSummary.constituency.ilike(f"%{constituency.strip()}%"))
-    if state:
+    if state and state.strip():
         query = query.filter(MPFinancialSummary.state.ilike(f"%{state.strip()}%"))
-    if house:
+    if house and house.strip() and house.strip().lower() != "all":
         query = query.filter(MPFinancialSummary.house.ilike(f"%{house.strip()}%"))
+    if search and search.strip():
+        search_terms = search.strip().split()
+        for term in search_terms:
+            query = query.filter(
+                or_(
+                    MPFinancialSummary.mp_name.ilike(f"%{term}%"),
+                    MPFinancialSummary.constituency.ilike(f"%{term}%"),
+                    MPFinancialSummary.state.ilike(f"%{term}%"),
+                )
+            )
 
     total = query.count()
     total_pages = math.ceil(total / limit) if total > 0 else 0

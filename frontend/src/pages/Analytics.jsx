@@ -192,7 +192,60 @@ export default function Analytics() {
         </Card>
       </div>
 
-      {/* Row 2: Active Multi-Signal Risk Architecture */}
+      {/* Row 2: Official MoSPI Macro Metric Benchmarks */}
+      {dashboardData?.macro_indicators && Object.keys(dashboardData.macro_indicators).length > 0 && (
+        <Card className="p-6 bg-white">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 mb-4 border-b border-[#D8CBB6]">
+            <div>
+              <h3 className="text-sm font-bold text-[#44312A] uppercase tracking-wide flex items-center gap-2">
+                <Layers className="h-4 w-4 text-[#44312A]" />
+                <span>MoSPI / e-SAKSHI Official Macro Benchmarks</span>
+              </h3>
+              <p className="text-xs text-[#504F47] mt-0.5">
+                High-level governmental indicators for macro expenditure baseline validation.
+              </p>
+            </div>
+            <span className="text-[11px] font-mono text-[#504F47] bg-[#FAF7F2] px-2.5 py-1 rounded-full border border-[#D8CBB6]">
+              Ministry of Statistics & PI
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {Object.entries(dashboardData.macro_indicators).map(([key, item]) => (
+              <div
+                key={key}
+                className="p-3 rounded-xl bg-[#FAF7F2] border border-[#D8CBB6] flex items-center justify-between text-xs"
+              >
+                <div className="truncate pr-2">
+                  <span className="text-[#44312A] font-semibold block truncate">
+                    {item.metric_name || key.replace(/_/g, ' ').toUpperCase()}
+                  </span>
+                  {item.value_raw && (
+                    <span className="text-[10px] text-[#504F47] font-mono">
+                      {item.value_raw}
+                    </span>
+                  )}
+                </div>
+                <div className="text-right font-mono shrink-0">
+                  {item.value_crores ? (
+                    <span className="font-bold text-[#44312A] block">
+                      ₹{item.value_crores}
+                    </span>
+                  ) : item.count !== null ? (
+                    <span className="font-bold text-[#44312A] block">
+                      {formatIndianNumber(item.count)}
+                    </span>
+                  ) : (
+                    <span className="text-[#504F47]">N/A</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Row 3: Active Multi-Signal Risk Architecture */}
       <Card className="p-6 bg-white">
         <div className="flex items-start gap-4">
           <div className="h-10 w-10 rounded-2xl bg-[#FAF7F2] border border-[#D8CBB6] flex items-center justify-center text-[#44312A] shrink-0">

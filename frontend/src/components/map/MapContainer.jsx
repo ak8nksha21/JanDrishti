@@ -120,8 +120,8 @@ export default function MapContainer({ worksData: propWorks = null, loading = fa
     let missing = 0;
 
     (works || []).forEach((w) => {
-      const rawLat = w.gps_latitude ?? w.latitude;
-      const rawLng = w.gps_longitude ?? w.longitude;
+      const rawLat = w.latitude ?? w.gps_latitude;
+      const rawLng = w.longitude ?? w.gps_longitude;
 
       if (rawLat === null || rawLng === null || rawLat === undefined || rawLng === undefined || rawLat === '' || rawLng === '') {
         missing++;
@@ -291,11 +291,19 @@ export default function MapContainer({ worksData: propWorks = null, loading = fa
           <div className="flex items-center gap-2">
             <Info className="h-3.5 w-3.5 text-[#44312A] shrink-0" />
             <span>
-              Plotting <strong className="text-[#44312A]">{filteredMarkers.length}</strong> works with verified numerical coordinates.
-              {missingGeoCount > 0 && (
-                <span className="text-[#8C7769] ml-1">
-                  ({missingGeoCount} works without coordinates are excluded from map plotting per documentation audit rules.)
-                </span>
+              {validMarkers.length > 0 ? (
+                <>
+                  Plotting <strong className="text-[#44312A]">{filteredMarkers.length}</strong> works with verified numerical coordinates.
+                  {missingGeoCount > 0 && (
+                    <span className="text-[#8C7769] ml-1">
+                      ({missingGeoCount} works without coordinates are excluded per data integrity rules.)
+                    </span>
+                  )}
+                </>
+              ) : (
+                <>
+                  <strong className="text-[#44312A]">No verified GPS coordinates available:</strong> Current official MPLADS records provide textual administrative locations but no numerical latitude/longitude coordinates. Projects are therefore excluded from map plotting rather than assigned synthetic locations.
+                </>
               )}
             </span>
           </div>
@@ -392,6 +400,27 @@ export default function MapContainer({ worksData: propWorks = null, loading = fa
               );
             })}
           </LeafletMap>
+
+          {/* Professional Data Integrity Overlay when 0 records contain numerical GPS */}
+          {validMarkers.length === 0 && !fetching && (
+            <div className="absolute bottom-5 left-5 z-10 bg-white/95 backdrop-blur-md border border-[#D8CBB6] rounded-2xl p-4 shadow-xl text-xs text-[#44312A] max-w-md pointer-events-none space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="font-bold flex items-center gap-1.5 text-[#44312A] text-xs">
+                  <Compass className="h-4 w-4 text-[#44312A]" />
+                  <span>No verified GPS coordinates available</span>
+                </div>
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-[#FAF7F2] text-[#44312A] border border-[#D8CBB6]">
+                  Data Quality Policy
+                </span>
+              </div>
+              <p className="text-[11px] text-[#504F47] leading-relaxed">
+                Current official MPLADS records provide textual administrative locations but no numerical latitude/longitude coordinates. Projects are therefore excluded from map plotting rather than assigned synthetic locations.
+              </p>
+              <div className="pt-1 text-[10px] text-[#8C7769] font-mono">
+                OpenStreetMap GIS Base Layer Active • Zero Geocoding Fabrication
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Slide-Over Drawer Panel in Crisp White & Brown */}

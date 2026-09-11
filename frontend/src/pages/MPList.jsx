@@ -32,22 +32,79 @@ export default function MPList() {
   const initialHouse = searchParams.get('house') || '';
   const initialState = searchParams.get('state') || '';
   const initialConstituency = searchParams.get('constituency') || '';
+  const initialSearch = searchParams.get('search') || searchParams.get('q') || '';
 
   const [page, setPage] = useState(initialPage);
   const [limit, setLimit] = useState(initialLimit);
   const [house, setHouse] = useState(initialHouse);
   const [state, setState] = useState(initialState);
   const [constituency, setConstituency] = useState(initialConstituency);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
 
   const [mpsData, setMpsData] = useState({ items: [], total: 0, total_pages: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Complete registry list for dynamic filter options (all 774 MPs)
+  const [allMPsRegistry, setAllMPsRegistry] = useState([]);
+
   // Selected MP for slide-over detail panel
   const [selectedMP, setSelectedMP] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
 
+  // Load all MP records once to dynamically populate complete State & Constituency options
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchAllOptions() {
+      try {
+        const fullRegistry = await getMPs({ limit: 1000 });
+        if (isMounted && fullRegistry && Array.isArray(fullRegistry.items)) {
+          setAllMPsRegistry(fullRegistry.items);
+        }
+      } catch (e) {
+        console.warn('Could not load full MP registry for filter dropdowns:', e);
+      }
+    }
+    fetchAllOptions();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Compute distinct states from all MP records
+  const availableStates = useMemo(() => {
+    let items = allMPsRegistry;
+    if (house && house !== 'All') {
+      items = items.filter((m) => m.house && m.house.toLowerCase() === house.toLowerCase());
+    }
+    const statesSet = new Set();
+    items.forEach((m) => {
+      if (m.state && m.state.trim()) {
+        statesSet.add(m.state.trim());
+      }
+    });
+    return Array.from(statesSet).sort((a, b) => a.localeCompare(b));
+  }, [allMPsRegistry, house]);
+
+  // Compute distinct constituencies from all MP records, filtered by state and house if selected
+  const availableConstituencies = useMemo(() => {
+    let items = allMPsRegistry;
+    if (house && house !== 'All') {
+      items = items.filter((m) => m.house && m.house.toLowerCase() === house.toLowerCase());
+    }
+    if (state && state.trim()) {
+      items = items.filter((m) => m.state && m.state.toLowerCase() === state.toLowerCase().trim());
+    }
+    const constSet = new Set();
+    items.forEach((m) => {
+      if (m.constituency && m.constituency.trim()) {
+        constSet.add(m.constituency.trim());
+      }
+    });
+    return Array.from(constSet).sort((a, b) => a.localeCompare(b));
+  }, [allMPsRegistry, house, state]);
+
+  // Load paginated MPs based on current query and filters
   const loadMPs = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -55,9 +112,10 @@ export default function MPList() {
       const params = {
         page,
         limit,
-        house: house || undefined,
+        house: house && house !== 'All' ? house : undefined,
         state: state || undefined,
         constituency: constituency || undefined,
+        search: searchQuery.trim() || undefined,
       };
       const data = await getMPs(params);
       setMpsData(data || { items: [], total: 0, total_pages: 0 });
@@ -67,7 +125,7 @@ export default function MPList() {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, house, state, constituency]);
+  }, [page, limit, house, state, constituency, searchQuery]);
 
   useEffect(() => {
     loadMPs();
@@ -97,6 +155,7 @@ export default function MPList() {
     if (house && house !== 'All') params.set('house', house);
     if (state) params.set('state', state);
     if (constituency) params.set('constituency', constituency);
+    if (searchQuery.trim()) params.set('search', searchQuery.trim());
     if (limit !== 20) params.set('limit', String(limit));
     params.set('page', '1');
     setSearchParams(params);
@@ -111,18 +170,8 @@ export default function MPList() {
     setSearchParams({});
   };
 
-  // Quick client-side filter across MP Name and Constituency for current batch
-  const displayedMPs = useMemo(() => {
-    return (mpsData.items || []).filter((m) => {
-      if (!searchQuery.trim()) return true;
-      const q = searchQuery.toLowerCase();
-      return (
-        (m.mp_name && m.mp_name.toLowerCase().includes(q)) ||
-        (m.constituency && m.constituency.toLowerCase().includes(q)) ||
-        (m.state && m.state.toLowerCase().includes(q))
-      );
-    });
-  }, [mpsData.items, searchQuery]);
+  // The displayed items match backend returned paginated dataset
+  const displayedMPs = mpsData.items || [];
 
   // Color helper for utilization percentage in brown palette
   const getUtilizationColor = (util) => {
@@ -131,6 +180,24 @@ export default function MPList() {
     if (val >= 50) return { text: 'text-[#6B5145]', bar: 'bg-[#6B5145]' };
     return { text: 'text-[#8C7769]', bar: 'bg-[#8C7769]' };
   };
+
+  // Case-insensitive match helper for selected constituency in dropdown
+  const currentConstituencyValue = useMemo(() => {
+    if (!constituency) return '';
+    const match = availableConstituencies.find(
+      (c) => c.toLowerCase() === constituency.toLowerCase()
+    );
+    return match || constituency;
+  }, [constituency, availableConstituencies]);
+
+  // Case-insensitive match helper for selected state in dropdown
+  const currentStateValue = useMemo(() => {
+    if (!state) return '';
+    const match = availableStates.find(
+      (s) => s.toLowerCase() === state.toLowerCase()
+    );
+    return match || state;
+  }, [state, availableStates]);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto relative">
@@ -165,15 +232,18 @@ export default function MPList() {
             {/* Quick Search */}
             <div>
               <label className="block text-[11px] font-bold text-[#504F47] mb-1">
-                Filter by MP Name
+                Search MP Name
               </label>
               <div className="relative">
                 <Search className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#8C7769]" />
                 <input
                   type="text"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="e.g. Ravi Kishan"
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setPage(1);
+                  }}
+                  placeholder="e.g. Narendra Modi or Ravi Kishan"
                   className="w-full pl-8 pr-3 py-1.5 text-xs bg-[#FAF7F2] border border-[#D8CBB6] rounded-xl text-[#44312A] placeholder-[#8C7769] focus:outline-none focus:border-[#44312A]"
                 />
               </div>
@@ -186,7 +256,10 @@ export default function MPList() {
               </label>
               <select
                 value={house}
-                onChange={(e) => setHouse(e.target.value)}
+                onChange={(e) => {
+                  setHouse(e.target.value);
+                  setPage(1);
+                }}
                 className="w-full px-3 py-1.5 text-xs bg-[#FAF7F2] border border-[#D8CBB6] rounded-xl text-[#44312A] focus:outline-none focus:border-[#44312A]"
               >
                 <option value="">All Houses</option>
@@ -195,32 +268,53 @@ export default function MPList() {
               </select>
             </div>
 
-            {/* State Filter */}
+            {/* State Filter Dropdown */}
             <div>
               <label className="block text-[11px] font-bold text-[#504F47] mb-1">
                 State
               </label>
-              <input
-                type="text"
-                value={state}
-                onChange={(e) => setState(e.target.value)}
-                placeholder="e.g. Uttar Pradesh"
-                className="w-full px-3 py-1.5 text-xs bg-[#FAF7F2] border border-[#D8CBB6] rounded-xl text-[#44312A] placeholder-[#8C7769] focus:outline-none focus:border-[#44312A]"
-              />
+              <select
+                value={currentStateValue}
+                onChange={(e) => {
+                  setState(e.target.value);
+                  setConstituency('');
+                  setPage(1);
+                }}
+                className="w-full px-3 py-1.5 text-xs bg-[#FAF7F2] border border-[#D8CBB6] rounded-xl text-[#44312A] focus:outline-none focus:border-[#44312A]"
+              >
+                <option value="">All States ({availableStates.length})</option>
+                {availableStates.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            {/* Constituency Filter */}
+            {/* Constituency Filter Dropdown */}
             <div>
               <label className="block text-[11px] font-bold text-[#504F47] mb-1">
                 Constituency
               </label>
-              <input
-                type="text"
-                value={constituency}
-                onChange={(e) => setConstituency(e.target.value)}
-                placeholder="e.g. Gorakhpur"
-                className="w-full px-3 py-1.5 text-xs bg-[#FAF7F2] border border-[#D8CBB6] rounded-xl text-[#44312A] placeholder-[#8C7769] focus:outline-none focus:border-[#44312A]"
-              />
+              <select
+                value={currentConstituencyValue}
+                onChange={(e) => {
+                  setConstituency(e.target.value);
+                  setPage(1);
+                }}
+                className="w-full px-3 py-1.5 text-xs bg-[#FAF7F2] border border-[#D8CBB6] rounded-xl text-[#44312A] focus:outline-none focus:border-[#44312A]"
+              >
+                <option value="">
+                  {state
+                    ? `All in ${state} (${availableConstituencies.length})`
+                    : `All Constituencies (${availableConstituencies.length})`}
+                </option>
+                {availableConstituencies.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Action Buttons */}

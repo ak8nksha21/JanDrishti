@@ -1,10 +1,14 @@
 import React from 'react';
 import {
-  Database,
-  Layers,
   AlertTriangle,
   ChevronRight,
   Info,
+  TrendingUp,
+  FileCheck,
+  Copy,
+  MapPin,
+  Calculator,
+  PieChart,
 } from 'lucide-react';
 import Card, { CardHeader, CardTitle, CardDescription, CardContent } from '../ui/Card';
 import Badge from '../ui/Badge';
@@ -17,55 +21,73 @@ export default function SystemHealthRiskPanel({
   healthStatus = null,
   loading = false,
 }) {
-  const dataSources = dashboardData?.data_sources || {};
-  const macroIndicators = dashboardData?.macro_indicators || {};
   const works = dashboardData?.works_summary || {};
   const mps = dashboardData?.mps_summary || {};
 
-  const empowered = dataSources.empowered_indian || {};
-  const mospi = dataSources.mospi_esakshi || {};
-
-  // Macro metrics array from dashboard dictionary
-  const macroList = Object.entries(macroIndicators).map(([key, item]) => ({
-    key,
-    name: item.metric_name || key.replace(/_/g, ' ').toUpperCase(),
-    valueCrores: item.value_crores || null,
-    count: item.count !== null && item.count !== undefined ? item.count : null,
-    valueRaw: item.value_raw || null,
-  }));
-
   const riskReviewSignals = [
     {
-      id: 'cost_outliers',
-      title: 'Statistical Cost Outlier Scan',
-      level: 'Flagged Risk',
+      id: 'cost_anomaly',
+      icon: Calculator,
+      title: 'Cost Anomaly Detection',
+      weight: '25% Weight',
+      level: 'Statistical Baseline',
       badgeVariant: 'warning',
       description:
-        'Identifies works whose final executed cost deviates beyond 2.5 standard deviations from the state/category baseline for human review.',
-      scope: works.total_works !== null ? `${formatIndianNumber(works.total_works)} Works Analyzed` : 'N/A',
-      actionText: 'Explore Works Registry',
+        'Scans executed expenditures against category and state median benchmarks to highlight significant cost deviations for field review.',
+      scope: works.total_works !== null ? `${formatIndianNumber(works.total_works)} Works Evaluated` : 'Live Feed',
+      actionText: 'Explore Works',
       link: '/works',
     },
     {
-      id: 'utilization_divergence',
-      title: 'Expenditure & Entitlement Gap',
-      level: 'Needs Review',
+      id: 'utilization_anomaly',
+      icon: PieChart,
+      title: 'Financial & Utilization Gap',
+      weight: '15% Weight',
+      level: 'Allocation Ledger',
       badgeVariant: 'default',
       description:
-        'Flags parliamentarian allocations where the gap between recommended works and completed disbursements exceeds normative thresholds.',
-      scope: mps.total_mps !== null ? `${formatIndianNumber(mps.total_mps)} MPs Monitored` : 'N/A',
-      actionText: 'Inspect MP Ledgers',
+        'Monitors the divergence between sanctioned constituency allocations, completed works valuation, and unspent balances.',
+      scope: mps.total_mps !== null ? `${formatIndianNumber(mps.total_mps)} MPs Monitored` : 'Live Feed',
+      actionText: 'Inspect MPs',
       link: '/mps',
     },
     {
-      id: 'data_completeness',
-      title: 'Geospatial & Metadata Quality Audit',
-      level: 'Needs Review',
+      id: 'duplicate_works',
+      icon: Copy,
+      title: 'Duplicate & Overlapping Works',
+      weight: '20% Weight',
+      level: 'Similarity Match',
+      badgeVariant: 'warning',
+      description:
+        'Cross-checks project descriptions, executing timelines, and location names across constituencies to detect potential duplicate proposals.',
+      scope: 'Pairwise Cross-Match',
+      actionText: 'View Works',
+      link: '/works',
+    },
+    {
+      id: 'geographic_signal',
+      icon: MapPin,
+      title: 'Geographic & Proximity Signal',
+      weight: '10% Weight',
+      level: 'Spatial Audit',
       badgeVariant: 'outline',
       description:
-        'Continuous audit verifying GPS coordinate presence, implementing agency attribution, and citizen beneficiary completeness in ingested records.',
-      scope: 'Live Feed Verification',
-      actionText: 'View Data Sources',
+        'Audits physical proximity clustering, district boundaries, and flags missing or irregular geotagging coordinates.',
+      scope: `${works.unique_constituencies || 21} Constituencies`,
+      actionText: 'Review Map',
+      link: '/works',
+    },
+    {
+      id: 'data_quality',
+      icon: FileCheck,
+      title: 'Data Quality & Evidence Completeness',
+      weight: '5% Weight',
+      level: 'Provenance Check',
+      badgeVariant: 'outline',
+      description:
+        'Verifies record completeness including implementing agency attribution, photo documentation metadata, and citizen beneficiary counts.',
+      scope: 'Ingestion Audit',
+      actionText: 'Data Sources',
       link: '/data-sources',
     },
   ];
@@ -77,213 +99,105 @@ export default function SystemHealthRiskPanel({
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-lg sm:text-xl font-black text-[#44312A] tracking-tight font-display">
-              System Health & Risk Summary
+              Risk & Anomaly Oversight Signals
             </h2>
             <Badge variant="primary" size="sm" dot>
-              SYSTEM ACTIVE
+              6-SIGNAL ENGINE ACTIVE
             </Badge>
           </div>
           <p className="text-xs text-[#504F47] mt-0.5">
-            Operational status of ingested data sources, official MoSPI benchmarks, and active risk monitoring signals.
+            Statistical indicators that transform raw public expenditures into explainable signals for administrative inquiry.
           </p>
         </div>
 
-        {healthStatus && (
-          <div className="flex items-center gap-2 text-xs font-mono text-[#44312A] bg-white px-3 py-1.5 rounded-xl border border-[#D8CBB6] shadow-xs">
-            <span
-              className={`h-2 w-2 rounded-full ${
-                healthStatus.isOnline ? 'bg-[#44312A]' : 'bg-transparent border border-[#44312A]'
-              }`}
-            />
-            <span>FastAPI: {healthStatus.status || 'Connected'}</span>
-            <span className="text-[#8C7769]">•</span>
-            <span className="text-[#44312A] font-bold">{healthStatus.latencyMs || 0}ms</span>
-          </div>
-        )}
+        <Link
+          to="/analytics"
+          className="text-xs font-bold text-[#44312A] hover:underline flex items-center gap-1 w-fit bg-white px-3 py-1.5 rounded-xl border border-[#D8CBB6] shadow-2xs"
+        >
+          <span>View Detailed Analytical Suite</span>
+          <ChevronRight className="h-3.5 w-3.5" />
+        </Link>
       </div>
 
-      {/* Main Grid: Data Sources + MoSPI Benchmarks + Risk Review Signals */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* 1. Data Sources Operational Status */}
-        <Card className="flex flex-col justify-between">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <Database className="h-4 w-4 text-[#44312A]" />
-                <span>Data Sources Health</span>
-              </CardTitle>
-              <Badge variant="primary" size="sm">
-                CONNECTED
-              </Badge>
-            </div>
-            <CardDescription>
-              Lineage and sync status of parliamentary data feeds.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3.5 pt-1">
-            {/* Empowered Indian Source */}
-            <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#D8CBB6] space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-[#44312A] font-mono">
-                  empowered_indian
-                </span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-[#E7DDCA] text-[#44312A] border border-[#D8CBB6] font-bold">
-                  {empowered.status || 'Active'}
-                </span>
-              </div>
-              <p className="text-[11px] text-[#504F47]">
-                Granular itemized works and MP performance summaries.
-              </p>
-              <div className="grid grid-cols-2 gap-2 pt-1 text-[11px] font-mono">
-                <div className="bg-white p-2 rounded-xl border border-[#D8CBB6]">
-                  <span className="text-[#504F47] block text-[10px]">Ingested Works</span>
-                  <span className="text-[#44312A] font-bold">
-                    {formatIndianNumber(empowered.ingested_works)}
-                  </span>
-                </div>
-                <div className="bg-white p-2 rounded-xl border border-[#D8CBB6]">
-                  <span className="text-[#504F47] block text-[10px]">Ingested MPs</span>
-                  <span className="text-[#44312A] font-bold">
-                    {formatIndianNumber(empowered.ingested_mps)}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* MoSPI e-SAKSHI Source */}
-            <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#D8CBB6] space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-[#44312A] font-mono">
-                  mospi_esakshi
-                </span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-[#E7DDCA] text-[#44312A] border border-[#D8CBB6] font-bold">
-                  {mospi.status || 'Active'}
-                </span>
-              </div>
-              <p className="text-[11px] text-[#504F47]">
-                Official national dashboard benchmark indicators.
-              </p>
-              <div className="bg-white p-2 rounded-xl border border-[#D8CBB6] text-[11px] font-mono flex items-center justify-between">
-                <span className="text-[#504F47] text-[10px]">Macro Metrics Tracked</span>
-                <span className="text-[#44312A] font-bold">
-                  {formatIndianNumber(mospi.macro_metrics_tracked || macroList.length)}
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* 2. Official MoSPI Macro Metric Benchmarks */}
-        <Card className="flex flex-col justify-between">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <Layers className="h-4 w-4 text-[#44312A]" />
-                <span>MoSPI Macro Benchmarks</span>
-              </CardTitle>
-              <span className="text-[11px] font-mono text-[#504F47]">Official Feed</span>
-            </div>
-            <CardDescription>
-              High-level governmental indicators for macro baseline validation.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-1">
-            {macroList.length === 0 ? (
-              <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#D8CBB6] text-center space-y-1">
-                <p className="text-xs text-[#44312A] font-semibold">
-                  Official macro indicators awaiting synchronization.
-                </p>
-                <p className="text-[11px] text-[#504F47]">
-                  Baseline metrics will populate upon MoSPI feed update.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {macroList.slice(0, 4).map((macro) => (
-                  <div
-                    key={macro.key}
-                    className="p-2.5 rounded-xl bg-[#FAF7F2] border border-[#D8CBB6] flex items-center justify-between text-xs"
-                  >
-                    <div className="truncate pr-2">
-                      <span className="text-[#44312A] font-semibold block truncate">
-                        {macro.name}
-                      </span>
-                      {macro.valueRaw && (
-                        <span className="text-[10px] text-[#504F47] font-mono">
-                          {macro.valueRaw}
-                        </span>
-                      )}
+      {/* Grid of 5 Key Risk/Anomaly Signals */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {riskReviewSignals.map((signal) => {
+          const Icon = signal.icon;
+          return (
+            <Card
+              key={signal.id}
+              className="p-5 flex flex-col justify-between hover:border-[#44312A] hover:shadow-md transition duration-200 group"
+            >
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-xl bg-[#FAF7F2] border border-[#D8CBB6] flex items-center justify-center text-[#44312A] group-hover:bg-[#44312A] group-hover:text-[#E7DDCA] transition">
+                      <Icon className="h-4 w-4" />
                     </div>
-                    <div className="text-right font-mono shrink-0">
-                      {macro.valueCrores ? (
-                        <span className="font-bold text-[#44312A] block">
-                          ₹{macro.valueCrores}
-                        </span>
-                      ) : macro.count !== null ? (
-                        <span className="font-bold text-[#44312A] block">
-                          {formatIndianNumber(macro.count)}
-                        </span>
-                      ) : (
-                        <span className="text-[#504F47]">N/A</span>
-                      )}
+                    <div>
+                      <h3 className="text-xs font-bold text-[#44312A] leading-tight">
+                        {signal.title}
+                      </h3>
+                      <span className="text-[10px] font-mono text-[#8C7769]">
+                        {signal.weight}
+                      </span>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-            <div className="mt-3 pt-2 border-t border-[#D8CBB6] text-[11px] text-[#504F47] flex items-center justify-between">
-              <span>Source Authority:</span>
-              <span className="text-[#44312A] font-mono font-semibold">MoSPI e-Sakshi Portal</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* 3. Flagged Risk & Verification Signals */}
-        <Card className="flex flex-col justify-between">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-[#44312A]" />
-                <span>Risk & Anomaly Signals</span>
-              </CardTitle>
-              <Badge variant="warning" size="sm">
-                FLAGGED RISK
-              </Badge>
-            </div>
-            <CardDescription>
-              Heuristic patterns requiring administrative inspection.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2.5 pt-1">
-            {riskReviewSignals.map((signal) => (
-              <div
-                key={signal.id}
-                className="p-3 rounded-2xl bg-[#FAF7F2] border border-[#D8CBB6] space-y-1.5 hover:border-[#44312A] transition"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-[#44312A]">
-                    {signal.title}
-                  </span>
                   <Badge variant={signal.badgeVariant} size="sm">
                     {signal.level}
                   </Badge>
                 </div>
+
                 <p className="text-[11px] text-[#504F47] leading-relaxed">
                   {signal.description}
                 </p>
-                <div className="flex items-center justify-between pt-1 border-t border-[#D8CBB6] text-[11px]">
-                  <span className="text-[#504F47] font-mono">{signal.scope}</span>
-                  <Link
-                    to={signal.link}
-                    className="text-[#44312A] hover:underline font-bold inline-flex items-center gap-0.5"
-                  >
-                    <span>{signal.actionText}</span>
-                    <ChevronRight className="h-3 w-3" />
-                  </Link>
-                </div>
               </div>
-            ))}
-          </CardContent>
+
+              <div className="pt-3 mt-3 border-t border-[#D8CBB6] flex items-center justify-between text-[11px]">
+                <span className="text-[#504F47] font-mono">{signal.scope}</span>
+                <Link
+                  to={signal.link}
+                  className="text-[#44312A] hover:underline font-bold inline-flex items-center gap-0.5"
+                >
+                  <span>{signal.actionText}</span>
+                  <ChevronRight className="h-3 w-3" />
+                </Link>
+              </div>
+            </Card>
+          );
+        })}
+
+        {/* 6th Card: Explanatory Model Summary Card */}
+        <Card className="p-5 flex flex-col justify-between bg-[#FAF7F2] border-[#D8CBB6]">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-xl bg-white border border-[#D8CBB6] flex items-center justify-center text-[#44312A]">
+                <TrendingUp className="h-4 w-4" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-[#44312A]">
+                  Canonical Weighted Risk Score
+                </h3>
+                <span className="text-[10px] font-mono text-[#8C7769]">
+                  0 – 100 Risk Index
+                </span>
+              </div>
+            </div>
+            <p className="text-[11px] text-[#504F47] leading-relaxed">
+              Synthesizes all 6 signals with strict data completeness checks. If data is missing, the engine preserves data honesty rather than defaulting to zero.
+            </p>
+          </div>
+
+          <div className="pt-3 mt-3 border-t border-[#D8CBB6] flex items-center justify-between text-[11px]">
+            <span className="font-mono text-[#8C7769]">ML Anomaly: 25%</span>
+            <Link
+              to="/works"
+              className="text-[#44312A] hover:underline font-bold inline-flex items-center gap-0.5"
+            >
+              <span>Inspect Scored Works</span>
+              <ChevronRight className="h-3 w-3" />
+            </Link>
+          </div>
         </Card>
       </div>
 
@@ -291,8 +205,8 @@ export default function SystemHealthRiskPanel({
       <div className="p-3.5 rounded-2xl bg-[#F4EFE6] border border-[#D8CBB6] text-xs text-[#44312A] flex items-start gap-2.5">
         <Info className="h-4 w-4 text-[#44312A] shrink-0 mt-0.5" />
         <p className="leading-relaxed">
-          <strong className="text-[#44312A]">Public Governance Assurance: </strong>
-          {RISK_DISCLAIMER} All identifiers, allocations, and expenditures reflect verified parliamentary disclosures.
+          <strong className="text-[#44312A]">Civic Governance Notice: </strong>
+          {RISK_DISCLAIMER} All scores indicate heuristic priority for administrative review rather than legal conclusions.
         </p>
       </div>
     </div>
