@@ -19,7 +19,7 @@ export default function PipelineFlow() {
       subtitle: 'MoSPI & Empowered Indian',
       detail: 'REST endpoints & JSON batch feeds',
       icon: Database,
-      accent: 'border-[#DFCFC0] bg-[#FAF7F2] text-[#8B5A2B]',
+      accent: 'border-[#D8CBB6] bg-[#FAF7F2] text-[#44312A]',
     },
     {
       id: 2,
@@ -27,7 +27,7 @@ export default function PipelineFlow() {
       subtitle: 'Retries & Raw Archival',
       detail: 'Preserves timestamped data/raw copies',
       icon: Server,
-      accent: 'border-[#DFCFC0] bg-[#FAF7F2] text-[#8B5A2B]',
+      accent: 'border-[#D8CBB6] bg-[#FAF7F2] text-[#44312A]',
     },
     {
       id: 3,
@@ -35,7 +35,7 @@ export default function PipelineFlow() {
       subtitle: 'Schema Enforcement',
       detail: 'Null safe, datetime & numeric coercion',
       icon: Filter,
-      accent: 'border-[#DFCFC0] bg-[#FAF7F2] text-[#5C3A21]',
+      accent: 'border-[#D8CBB6] bg-[#FAF7F2] text-[#44312A]',
     },
     {
       id: 4,
@@ -43,7 +43,7 @@ export default function PipelineFlow() {
       subtitle: 'Privacy Protection',
       detail: 'Regex stripping of phone & email patterns',
       icon: ShieldCheck,
-      accent: 'border-[#CFDFC8] bg-[#F3F8F2] text-[#3E5C38]',
+      accent: 'border-[#D8CBB6] bg-[#FAF7F2] text-[#44312A]',
     },
     {
       id: 5,
@@ -51,7 +51,7 @@ export default function PipelineFlow() {
       subtitle: 'PostgreSQL 16 / SQLite',
       detail: 'Idempotent upsert & indexed entities',
       icon: Database,
-      accent: 'border-[#DFCFC0] bg-[#FAF7F2] text-[#3E2723]',
+      accent: 'border-[#D8CBB6] bg-[#FAF7F2] text-[#44312A]',
     },
     {
       id: 6,
@@ -59,7 +59,7 @@ export default function PipelineFlow() {
       subtitle: 'SQL Aggregations',
       detail: 'Real aggregates, pagination & filters',
       icon: Code2,
-      accent: 'border-[#DFCFC0] bg-[#FAF7F2] text-[#8B5A2B]',
+      accent: 'border-[#D8CBB6] bg-[#FAF7F2] text-[#44312A]',
     },
     {
       id: 7,
@@ -67,18 +67,18 @@ export default function PipelineFlow() {
       subtitle: 'Intelligence Dashboard',
       detail: 'Civic transparency & audit signals',
       icon: LayoutDashboard,
-      accent: 'border-[#8B5A2B] bg-[#3E2723] text-white shadow-md',
+      accent: 'border-[#44312A] bg-[#44312A] text-[#E7DDCA] shadow-md',
     },
   ];
 
   return (
     <Card className="p-6 overflow-hidden">
       <div className="mb-6">
-        <h3 className="text-sm font-bold uppercase tracking-wider text-[#231815] flex items-center gap-2 font-display">
-          <ShieldCheck className="h-4 w-4 text-[#3E5C38]" />
+        <h3 className="text-sm font-bold uppercase tracking-wider text-[#44312A] flex items-center gap-2 font-display">
+          <ShieldCheck className="h-4 w-4 text-[#44312A]" />
           <span>Verifiable Data Ingestion & Sanitization Pipeline</span>
         </h3>
-        <p className="text-xs text-[#7A685D] mt-1 leading-relaxed">
+        <p className="text-xs text-[#504F47] mt-1 leading-relaxed">
           How raw government and legislative data transitions from unauthenticated public feeds into normalized, privacy-sanitized intelligence records.
         </p>
       </div>
@@ -109,7 +109,7 @@ export default function PipelineFlow() {
 
               {/* Arrow Connector (for desktop screens) */}
               {idx < steps.length - 1 && (
-                <div className="hidden md:block absolute -right-2 top-1/2 -translate-y-1/2 z-10 text-[#C8B9A6]">
+                <div className="hidden md:block absolute -right-2 top-1/2 -translate-y-1/2 z-10 text-[#D8CBB6]">
                   <ArrowRight className="h-4 w-4" />
                 </div>
               )}
@@ -119,30 +119,30 @@ export default function PipelineFlow() {
       </div>
 
       {/* Pipeline Guarantees */}
-      <div className="mt-6 pt-5 border-t border-[#EAE3D8] grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+      <div className="mt-6 pt-5 border-t border-[#D8CBB6] grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
         <div className="flex items-start gap-2.5">
-          <CheckCircle2 className="h-4 w-4 text-[#3E5C38] shrink-0 mt-0.5" />
+          <CheckCircle2 className="h-4 w-4 text-[#44312A] shrink-0 mt-0.5" />
           <div>
-            <strong className="text-[#231815] block">Idempotent Ingestion</strong>
-            <span className="text-[#7A685D] text-[11px]">
+            <strong className="text-[#44312A] block font-bold">Idempotent Ingestion</strong>
+            <span className="text-[#504F47] text-[11px]">
               Re-running sync never creates duplicate works; existing rows are updated in place.
             </span>
           </div>
         </div>
         <div className="flex items-start gap-2.5">
-          <CheckCircle2 className="h-4 w-4 text-[#3E5C38] shrink-0 mt-0.5" />
+          <CheckCircle2 className="h-4 w-4 text-[#44312A] shrink-0 mt-0.5" />
           <div>
-            <strong className="text-[#231815] block">Regex PII Protection</strong>
-            <span className="text-[#7A685D] text-[11px]">
+            <strong className="text-[#44312A] block font-bold">Regex PII Protection</strong>
+            <span className="text-[#504F47] text-[11px]">
               Incidental phone numbers and emails in work descriptions are permanently masked.
             </span>
           </div>
         </div>
         <div className="flex items-start gap-2.5">
-          <CheckCircle2 className="h-4 w-4 text-[#3E5C38] shrink-0 mt-0.5" />
+          <CheckCircle2 className="h-4 w-4 text-[#44312A] shrink-0 mt-0.5" />
           <div>
-            <strong className="text-[#231815] block">Pure SQL Calculation</strong>
-            <span className="text-[#7A685D] text-[11px]">
+            <strong className="text-[#44312A] block font-bold">Pure SQL Calculation</strong>
+            <span className="text-[#504F47] text-[11px]">
               All summary indicators are derived directly from PostgreSQL aggregations.
             </span>
           </div>
@@ -151,3 +151,4 @@ export default function PipelineFlow() {
     </Card>
   );
 }
+
