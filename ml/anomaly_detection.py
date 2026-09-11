@@ -558,7 +558,13 @@ class CostAnomalyDetector:
 
         n_rows = len(data)
         scores: List[Optional[float]] = [None] * n_rows
-        X = data[self.iforest_features_].copy()
+
+        working_data = data.copy()
+        for col in self.iforest_features_:
+            if col not in working_data.columns:
+                working_data[col] = np.nan
+
+        X = working_data[self.iforest_features_].copy()
         for col in self.iforest_features_:
             X[col] = pd.to_numeric(X[col], errors="coerce")
 
