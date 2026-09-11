@@ -156,6 +156,7 @@ Interactive Swagger API docs are available at **[http://localhost:8000/docs](htt
 | :--- | :--- | :--- |
 | `GET` | `/health` | Service health status |
 | `GET` | `/` | API status and root information |
+| `POST` | `/api/sync` | Trigger synchronization across external sources (Empowered Indian, MoSPI) and update PostgreSQL records |
 | `GET` | `/api/works` | Paginated list of works (Filters: `constituency`, `state`, `category`, `page`, `limit`) |
 | `GET` | `/api/works/{work_id}` | Detailed record for a single work item (by `work_id` or `source_id`) |
 | `GET` | `/api/mps` | Paginated MP financial summaries (Filters: `constituency`, `state`, `house`, `page`, `limit`) |

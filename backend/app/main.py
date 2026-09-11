@@ -8,6 +8,7 @@ import app.models  # Ensures all models are registered on Base.metadata
 from app.routes.works import router as works_router
 from app.routes.mps import router as mps_router
 from app.routes.dashboard import router as dashboard_router
+from app.routes.sync import router as sync_router
 
 # Configure logging
 logging.basicConfig(
@@ -51,6 +52,7 @@ app.add_middleware(
 app.include_router(works_router, prefix="/api")
 app.include_router(mps_router, prefix="/api")
 app.include_router(dashboard_router, prefix="/api")
+app.include_router(sync_router, prefix="/api")
 
 
 @app.get("/")
