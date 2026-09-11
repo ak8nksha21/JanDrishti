@@ -16,15 +16,18 @@ router = APIRouter(prefix="/sync", tags=["Sync"])
 def trigger_sync(
     response: Response,
     constituency: Optional[str] = Query(None, description="Optional constituency filter for completed works synchronization"),
+    state: Optional[str] = Query(None, description="Optional state filter for completed works synchronization"),
+    max_pages: Optional[int] = Query(5, ge=1, le=500, description="Maximum pages of completed works to fetch (default: 5 pages = max 500 works)"),
     db: Session = Depends(get_db)
 ):
     """
     Trigger full data synchronization across external MPLADS sources
     (Empowered Indian and MoSPI eSAKSHI) and update PostgreSQL records idempotently.
+    Default behavior fetches the first 5 national pages (max 500 works).
     """
-    logger.info("Triggered POST /api/sync")
+    logger.info(f"Triggered POST /api/sync (constituency={constituency}, state={state}, max_pages={max_pages})")
     service = IngestionService(db=db)
-    result = service.sync_all(constituency=constituency)
+    result = service.sync_all(constituency=constituency, state=state, max_pages=max_pages)
 
     if result["status"] == "failed":
         response.status_code = status.HTTP_502_BAD_GATEWAY

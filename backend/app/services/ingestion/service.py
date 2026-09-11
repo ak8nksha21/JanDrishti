@@ -41,15 +41,19 @@ class IngestionService:
     def ingest_completed_works(
         self,
         constituency: Optional[str] = None,
+        state: Optional[str] = None,
         max_pages: Optional[int] = None
     ) -> Dict[str, Any]:
         """
         Ingest completed works from Empowered Indian API into PostgreSQL.
+        Supports constituency filter, state filter, or national pagination.
         Guarantees idempotency on repeated executions.
         """
-        logger.info(f"Starting works ingestion (constituency={constituency})")
+        scope_desc = f"constituency={constituency}" if constituency else (f"state={state}" if state else "national")
+        logger.info(f"Starting works ingestion (scope={scope_desc}, max_pages={max_pages})")
         raw_works, raw_filepath = self.empowered_adapter.fetch_all_completed_works(
             constituency=constituency,
+            state=state,
             max_pages=max_pages
         )
 
@@ -91,11 +95,13 @@ class IngestionService:
                     error_count += 1
 
             db.commit()
-            logger.info(f"Works Ingestion Complete: Fetched={len(raw_works)}, Inserted={inserted_count}, Updated={updated_count}, Errors={error_count}")
+            logger.info(f"Works Ingestion Complete ({scope_desc}): Fetched={len(raw_works)}, Inserted={inserted_count}, Updated={updated_count}, Errors={error_count}")
             return {
                 "source": "empowered_indian",
                 "type": "completed_works",
+                "scope": "constituency" if constituency else ("state" if state else "national"),
                 "constituency": constituency,
+                "state": state,
                 "total_fetched": len(raw_works),
                 "inserted": inserted_count,
                 "updated": updated_count,
@@ -222,17 +228,23 @@ class IngestionService:
             if self._external_db is None:
                 db.close()
 
-    def sync_all(self, constituency: Optional[str] = "SHAHJAHANPUR") -> Dict[str, Any]:
+    def sync_all(
+        self,
+        constituency: Optional[str] = None,
+        state: Optional[str] = None,
+        max_pages: Optional[int] = 5
+    ) -> Dict[str, Any]:
         """
         Execute full synchronization across all configured external sources:
         1. MoSPI macro metrics
         2. Empowered Indian MP summaries
-        3. Empowered Indian completed works
+        3. Empowered Indian completed works (defaults to 5 national pages / 500 works,
+           or filtered by constituency / state if provided)
 
         Guarantees that partial failures in one source do not wipe or corrupt
         other sources or existing database data.
         """
-        target_constituency = constituency or "SHAHJAHANPUR"
+        scope_desc = f"constituency={constituency}" if constituency else (f"state={state}" if state else f"national (max_pages={max_pages})")
         results: Dict[str, Any] = {
             "status": "success",
             "message": "Data synchronization completed successfully",
@@ -272,19 +284,35 @@ class IngestionService:
 
         # 3. Completed Works
         try:
-            works_res = self.ingest_completed_works(constituency=target_constituency)
+            works_res = self.ingest_completed_works(
+                constituency=constituency,
+                state=state,
+                max_pages=max_pages
+            )
             results["summary"]["works"] = {
-                "constituency": target_constituency,
+                "scope": works_res.get("scope", "national"),
+                "constituency": constituency,
+                "state": state,
+                "max_pages": max_pages,
                 "fetched": works_res.get("total_fetched", 0),
                 "inserted": works_res.get("inserted", 0),
                 "updated": works_res.get("updated", 0),
                 "errors": works_res.get("errors", 0)
             }
         except Exception as e:
-            err_msg = f"Works sync failed ({target_constituency}): {str(e)}"
+            err_msg = f"Works sync failed ({scope_desc}): {str(e)}"
             logger.error(err_msg)
             results["errors"].append(err_msg)
-            results["summary"]["works"] = {"constituency": target_constituency, "error": str(e), "inserted": 0, "updated": 0}
+            results["summary"]["works"] = {
+                "scope": "constituency" if constituency else ("state" if state else "national"),
+                "constituency": constituency,
+                "state": state,
+                "max_pages": max_pages,
+                "fetched": 0,
+                "inserted": 0,
+                "updated": 0,
+                "error": str(e)
+            }
 
         if len(results["errors"]) == 3:
             results["status"] = "failed"
