@@ -2,6 +2,8 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
+ENV PYTHONPATH=/app
+
 # Install system dependencies if required for compiling C extensions (e.g. for psycopg2/scikit-learn)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \

@@ -83,6 +83,7 @@ def read_root():
 
 
 @app.get("/health")
+@app.get("/healthz")
 def health_check():
     return {
         "status": "healthy"
