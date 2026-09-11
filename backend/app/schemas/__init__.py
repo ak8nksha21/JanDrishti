@@ -1,4 +1,5 @@
 """Pydantic Schemas for Request/Response Validation"""
+
 from app.schemas.work import WorkResponse, PaginatedWorksResponse
 from app.schemas.mp_summary import MPFinancialSummaryResponse, PaginatedMPsResponse
 from app.schemas.dashboard import DashboardSummaryResponse
@@ -13,6 +14,25 @@ from app.schemas.risk import (
     RiskEngineConfigResponse,
     EvidenceItem,
 )
+from app.schemas.duplicate import (
+    DuplicatePairResponse,
+    DuplicateScanResponse,
+    SingleWorkDuplicatesResponse,
+)
+from app.schemas.geo import (
+    GeoCoordinateValidation,
+    GeoCoordinateAnomalyItem,
+    GeoProximityPairResponse,
+    GeoProximityScanResponse,
+    GeoAnomalyScanResponse,
+    SingleWorkNearbyResponse,
+)
+from app.schemas.data_quality import (
+    QualityIssueItem,
+    WorkQualityReportResponse,
+    DataQualitySummaryResponse,
+    DataQualityBatchResponse,
+)
 
 __all__ = [
     "WorkResponse",
@@ -21,6 +41,8 @@ __all__ = [
     "PaginatedMPsResponse",
     "DashboardSummaryResponse",
     "SyncResponse",
+
+    # Risk schemas
     "RiskEvaluationRequest",
     "BatchRiskEvaluationRequest",
     "RiskEvaluationResponse",
@@ -29,5 +51,23 @@ __all__ = [
     "RiskAlertsListResponse",
     "RiskEngineConfigResponse",
     "EvidenceItem",
-]
 
+    # Duplicate detection schemas
+    "DuplicatePairResponse",
+    "DuplicateScanResponse",
+    "SingleWorkDuplicatesResponse",
+
+    # Geographic analysis schemas
+    "GeoCoordinateValidation",
+    "GeoCoordinateAnomalyItem",
+    "GeoProximityPairResponse",
+    "GeoProximityScanResponse",
+    "GeoAnomalyScanResponse",
+    "SingleWorkNearbyResponse",
+
+    # Data quality schemas
+    "QualityIssueItem",
+    "WorkQualityReportResponse",
+    "DataQualitySummaryResponse",
+    "DataQualityBatchResponse",
+]

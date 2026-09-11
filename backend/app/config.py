@@ -1,7 +1,9 @@
+from typing import Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    DATABASE_URL: Optional[str] = None
     POSTGRES_DB: str = "jandrishti"
     POSTGRES_USER: str = "postgres"
     POSTGRES_PASSWORD: str = "postgres"
@@ -14,6 +16,8 @@ class Settings(BaseSettings):
 
     @property
     def database_url(self) -> str:
+        if self.DATABASE_URL:
+            return self.DATABASE_URL
         port = self.POSTGRES_PORT
         if self.POSTGRES_HOST in ("localhost", "127.0.0.1"):
             port = self.HOST_POSTGRES_PORT or self.POSTGRES_PORT
