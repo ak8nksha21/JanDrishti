@@ -1,4 +1,13 @@
+"""
+JanDrishti - Anomaly Detection API Routes
+
+Score Interpretation:
+Anomaly scores are normalized 0–100 statistical signals for risk triage.
+They are not official government thresholds and are not proof of fraud, corruption, or wrongdoing.
+"""
+
 from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
