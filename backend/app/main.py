@@ -15,6 +15,9 @@ from app.routes.investigate import router as investigate_router
 from app.routes.alerts import router as alerts_router
 from app.routes.audit import router as audit_router
 from app.routes.dataset import router as dataset_router
+from app.routes.duplicates import router as duplicates_router
+from app.routes.geo import router as geo_router
+from app.routes.data_quality import router as data_quality_router
 
 # Configure logging
 logging.basicConfig(
@@ -65,6 +68,9 @@ app.include_router(investigate_router, prefix="/api")
 app.include_router(alerts_router, prefix="/api")
 app.include_router(audit_router, prefix="/api")
 app.include_router(dataset_router, prefix="/api")
+app.include_router(duplicates_router, prefix="/api")
+app.include_router(geo_router, prefix="/api")
+app.include_router(data_quality_router, prefix="/api")
 
 
 @app.get("/")
