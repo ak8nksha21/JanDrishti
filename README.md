@@ -160,6 +160,7 @@ Interactive Swagger API docs are available at **[http://localhost:8000/docs](htt
 | `GET` | `/api/works` | Paginated list of works (Filters: `constituency`, `state`, `category`, `page`, `limit`) |
 | `GET` | `/api/works/{work_id}` | Detailed record for a single work item (by `work_id` or `source_id`) |
 | `GET` | `/api/mps` | Paginated MP financial summaries (Filters: `constituency`, `state`, `house`, `page`, `limit`) |
+| `GET` | `/api/mps/{id}` | Detailed financial & execution summary for a single MP (by database `id` or `source_id`) |
 | `GET` | `/api/dashboard` | Live aggregate analytics computed directly from stored PostgreSQL records |
 
 ---
