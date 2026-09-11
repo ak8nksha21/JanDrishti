@@ -4,10 +4,15 @@ import {
   MapPin,
   CheckCircle2,
   AlertCircle,
+  Sparkles,
+  ExternalLink,
+  ShieldCheck,
+  TrendingUp,
 } from 'lucide-react';
 import Card, { CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import WorkLocationMap from '../components/maps/WorkLocationMap';
+import InvestigationModal from '../components/InvestigationModal';
 import { Skeleton } from '../components/ui/Skeleton';
 import ErrorState from '../components/ui/ErrorState';
 import { fetchWorkById } from '../services/works';
@@ -25,6 +30,7 @@ export default function WorkDetails({ workId: propWorkId }) {
   const [riskData, setRiskData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isInvestigating, setIsInvestigating] = useState(false);
 
   useEffect(() => {
     if (!workId) return;
@@ -105,7 +111,7 @@ export default function WorkDetails({ workId: propWorkId }) {
       </button>
 
       {/* Header Record Banner */}
-      <div className="p-6 rounded-3xl border border-[#D8CBB6] bg-white shadow-sm space-y-3">
+      <div className="p-6 rounded-3xl border border-[#D8CBB6] bg-white shadow-sm space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className="font-mono text-xs font-bold text-[#44312A] bg-[#FAF7F2] px-2.5 py-0.5 rounded border border-[#D8CBB6]">
@@ -120,13 +126,23 @@ export default function WorkDetails({ workId: propWorkId }) {
               </Badge>
             )}
           </div>
-          <div className="text-right">
-            <span className="text-[10px] uppercase font-mono text-[#504F47] block font-bold">
-              Completed Cost
-            </span>
-            <span className="text-2xl font-black font-mono text-[#44312A]">
-              {costFormatted.compact}
-            </span>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsInvestigating(true)}
+              className="px-4 py-2 rounded-xl bg-[#44312A] hover:bg-[#34241E] text-[#E7DDCA] font-bold text-xs flex items-center gap-2 transition cursor-pointer shadow-md shadow-[#44312A]/20"
+            >
+              <Sparkles className="h-4 w-4 text-[#E7DDCA]" />
+              <span>Launch AI Investigation</span>
+            </button>
+            <div className="text-right pl-3 border-l border-[#D8CBB6]">
+              <span className="text-[10px] uppercase font-mono text-[#504F47] block font-bold">
+                Sanctioned Cost
+              </span>
+              <span className="text-xl font-black font-mono text-[#44312A]">
+                {costFormatted.compact}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -277,7 +293,7 @@ export default function WorkDetails({ workId: propWorkId }) {
             <span className="text-[11px] font-mono text-[#8C7769]">
               {work.latitude && work.longitude
                 ? `GPS: ${Number(work.latitude).toFixed(4)}, ${Number(work.longitude).toFixed(4)}`
-                : 'Coordinates Pending'}
+                : 'Coordinates Pending (0 Verified Points)'}
             </span>
           </div>
           <CardDescription>
@@ -303,6 +319,14 @@ export default function WorkDetails({ workId: propWorkId }) {
           {RISK_DISCLAIMER} All identifiers and cost figures reflect public legislative releases.
         </p>
       </div>
+
+      {/* AI Investigation Modal */}
+      {isInvestigating && (
+        <InvestigationModal
+          workId={work.work_id || work.id}
+          onClose={() => setIsInvestigating(false)}
+        />
+      )}
     </div>
   );
 }

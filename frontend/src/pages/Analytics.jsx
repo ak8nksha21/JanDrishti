@@ -2,6 +2,11 @@ import React, { useState, useEffect } from 'react';
 import {
   Building,
   Cpu,
+  TrendingUp,
+  ShieldCheck,
+  Activity,
+  Layers,
+  Sparkles,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -17,7 +22,9 @@ import Badge from '../components/ui/Badge';
 import ErrorState from '../components/ui/ErrorState';
 import { fetchDashboardSummary } from '../services/dashboard';
 import { fetchRiskSummary, fetchAgencyBenchmarks } from '../services/analytics';
-import { formatCroresLakhs } from '../utils/formatting';
+import { formatCroresLakhs, formatIndianNumber } from '../utils/formatting';
+import { RISK_DISCLAIMER } from '../utils/riskLanguage';
+import { Link } from '../router/Router';
 
 export default function Analytics() {
   const [dashboardData, setDashboardData] = useState(null);
@@ -80,13 +87,21 @@ export default function Analytics() {
               Expenditure & Implementation Analytics
             </h1>
             <Badge variant="primary" size="sm">
-              DEEP DIVE
+              ANALYTICAL SUITE
             </Badge>
           </div>
           <p className="text-xs text-[#504F47] mt-0.5">
-            Statistical cost spreads, utilization distribution, and implementing agency performance benchmarks.
+            Statistical cost spreads, utilization distribution, and active multi-signal risk monitoring models.
           </p>
         </div>
+
+        <Link
+          to="/works"
+          className="px-4 py-2 rounded-xl bg-[#44312A] hover:bg-[#34241E] text-[#E7DDCA] font-bold text-xs flex items-center gap-2 transition cursor-pointer shadow-xs w-fit"
+        >
+          <Sparkles className="h-3.5 w-3.5 text-[#E7DDCA]" />
+          <span>Launch AI Investigation in Works</span>
+        </Link>
       </div>
 
       {error && <ErrorState message={error} onRetry={loadData} />}
@@ -177,75 +192,53 @@ export default function Analytics() {
         </Card>
       </div>
 
-      {/* Row 2: Implementing Agency Benchmarks */}
-      {benchmarks.length > 0 && (
-        <Card className="overflow-hidden">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <Building className="h-4 w-4 text-[#44312A]" />
-                <span>Implementing Agency Benchmarks</span>
-              </CardTitle>
-              <Badge variant="outline" size="sm">
-                Statistical Aggregates
-              </Badge>
-            </div>
-            <CardDescription>
-              Aggregated expenditures and completed works executed by nodal district agencies.
-            </CardDescription>
-          </CardHeader>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="bg-[#FAF7F2] border-b border-[#D8CBB6] text-[#504F47] uppercase font-mono text-[10px] tracking-wider font-bold">
-                  <th className="py-3 px-4">Implementing Agency</th>
-                  <th className="py-3 px-4 text-center">Total Works Executed</th>
-                  <th className="py-3 px-4 text-right">Total Expenditure</th>
-                  <th className="py-3 px-4 text-right">Average Cost / Work</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#D8CBB6]">
-                {benchmarks.slice(0, 8).map((agency, i) => (
-                  <tr key={i} className="hover:bg-[#FAF7F2] transition">
-                    <td className="py-3 px-4 font-semibold text-[#44312A]">
-                      {agency.agency || 'Unspecified District Agency'}
-                    </td>
-                    <td className="py-3 px-4 text-center font-mono text-[#504F47]">
-                      {agency.total_works || 0}
-                    </td>
-                    <td className="py-3 px-4 text-right font-mono font-bold text-[#44312A]">
-                      {formatCroresLakhs(agency.total_spend).compact}
-                    </td>
-                    <td className="py-3 px-4 text-right font-mono text-[#44312A] font-semibold">
-                      {formatCroresLakhs(agency.avg_cost).compact}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      )}
-
-      {/* Row 3: Future Module Placeholders */}
-      <Card className="p-6 bg-[#FAF7F2]">
+      {/* Row 2: Active Multi-Signal Risk Architecture */}
+      <Card className="p-6 bg-white">
         <div className="flex items-start gap-4">
           <div className="h-10 w-10 rounded-2xl bg-[#FAF7F2] border border-[#D8CBB6] flex items-center justify-center text-[#44312A] shrink-0">
             <Cpu className="h-5 w-5" />
           </div>
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold text-[#44312A] uppercase tracking-wide">
-                Advanced Analytical Suite (Future Modules)
-              </h3>
-              <Badge variant="primary" size="sm">
-                IN ROADMAP
+          <div className="space-y-3 flex-1">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-[#44312A] uppercase tracking-wide">
+                  Active Multi-Signal Risk & Anomaly Architecture
+                </h3>
+                <p className="text-xs text-[#504F47] mt-0.5">
+                  The JanDrishti canonical risk engine continuously evaluates ingested works across six weighted heuristic and statistical dimensions:
+                </p>
+              </div>
+              <Badge variant="success" size="sm" dot>
+                ACTIVE ENGINE
               </Badge>
             </div>
-            <p className="text-xs text-[#504F47] leading-relaxed max-w-3xl">
-              Advanced machine learning analytics (including <strong>Isolation Forest multidimensional anomaly detection</strong>, <strong>semantic sentence-transformer duplicate identification</strong>, and <strong>agentic audit generation</strong>) are currently undergoing algorithmic validation.
-              These modules will integrate directly into this analytical dashboard once cross-validated against historical auditor-general findings.
-            </p>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 pt-2 text-xs">
+              <div className="p-2.5 rounded-xl bg-[#FAF7F2] border border-[#D8CBB6]">
+                <span className="font-bold text-[#44312A] block text-[11px]">ML Anomaly</span>
+                <span className="text-[10px] font-mono text-[#8C7769]">25% Weight</span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-[#FAF7F2] border border-[#D8CBB6]">
+                <span className="font-bold text-[#44312A] block text-[11px]">Cost Outlier</span>
+                <span className="text-[10px] font-mono text-[#8C7769]">25% Weight</span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-[#FAF7F2] border border-[#D8CBB6]">
+                <span className="font-bold text-[#44312A] block text-[11px]">Duplicate Match</span>
+                <span className="text-[10px] font-mono text-[#8C7769]">20% Weight</span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-[#FAF7F2] border border-[#D8CBB6]">
+                <span className="font-bold text-[#44312A] block text-[11px]">Fund Utilization</span>
+                <span className="text-[10px] font-mono text-[#8C7769]">15% Weight</span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-[#FAF7F2] border border-[#D8CBB6]">
+                <span className="font-bold text-[#44312A] block text-[11px]">Geographic Conflict</span>
+                <span className="text-[10px] font-mono text-[#8C7769]">10% Weight</span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-[#FAF7F2] border border-[#D8CBB6]">
+                <span className="font-bold text-[#44312A] block text-[11px]">Data Quality</span>
+                <span className="text-[10px] font-mono text-[#8C7769]">5% Weight</span>
+              </div>
+            </div>
           </div>
         </div>
       </Card>

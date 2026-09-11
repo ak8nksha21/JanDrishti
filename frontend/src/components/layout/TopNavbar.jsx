@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   LayoutDashboard,
   Briefcase,
@@ -10,6 +10,7 @@ import {
   RefreshCw,
   Menu,
   X,
+  ChevronDown,
 } from 'lucide-react';
 import { Link, useRouter } from '../../router/Router';
 import { formatRelativeTime } from '../../utils/formatting';
@@ -73,43 +74,58 @@ export default function TopNavbar({
 }) {
   const { path } = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [systemDropdownOpen, setSystemDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
 
-  const navItems = [
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setSystemDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Simplified Core Judge-Facing MVP Navigation
+  const primaryNavItems = [
     {
       label: 'Overview',
       to: '/',
       icon: LayoutDashboard,
-      badge: null,
     },
     {
       label: 'Works Explorer',
       to: '/works',
       icon: Briefcase,
-      badge: null,
     },
     {
       label: 'MP Performance',
       to: '/mps',
       icon: Users,
-      badge: null,
     },
+  ];
+
+  // Secondary Supporting Views
+  const secondaryNavItems = [
     {
-      label: 'Analytics',
+      label: 'Analytics Suite',
       to: '/analytics',
       icon: BarChart3,
-      badge: null,
+      desc: 'Cost spreads & utilization curves',
     },
     {
-      label: 'Data Sources',
+      label: 'Data Sources & Lineage',
       to: '/data-sources',
       icon: Database,
-      badge: null,
+      desc: 'Empowered Indian & MoSPI feeds',
     },
     {
-      label: 'System Status',
+      label: 'System Health & Diagnostics',
       to: '/status',
       icon: Activity,
-      badge: apiStatus.isOnline ? 'Live' : 'Offline',
+      desc: 'API probes & database connection',
     },
   ];
 
@@ -141,7 +157,7 @@ export default function TopNavbar({
           {/* 2. Center: Desktop Top Navigation Links (Centered Alignment) */}
           <div className="hidden lg:flex flex-1 items-center justify-center px-4">
             <nav className="flex items-center gap-1 xl:gap-1.5 p-1 bg-[#FAF7F2] rounded-2xl border border-[#D8CBB6] shadow-2xs">
-              {navItems.map((item) => {
+              {primaryNavItems.map((item) => {
                 const Icon = item.icon;
                 const isActive =
                   item.to === '/' ? path === '/' : path.startsWith(item.to);
@@ -150,7 +166,7 @@ export default function TopNavbar({
                   <Link
                     key={item.to}
                     to={item.to}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 relative group cursor-pointer ${
+                    className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 relative group cursor-pointer ${
                       isActive
                         ? 'bg-[#44312A] text-[#E7DDCA] shadow-sm'
                         : 'text-[#504F47] hover:text-[#44312A] hover:bg-[#E7DDCA]/50'
@@ -158,154 +174,163 @@ export default function TopNavbar({
                   >
                     <Icon
                       className={`h-3.5 w-3.5 transition-colors ${
-                        isActive
-                          ? 'text-[#E7DDCA]'
-                          : 'text-[#504F47] group-hover:text-[#44312A]'
+                        isActive ? 'text-[#E7DDCA]' : 'text-[#504F47] group-hover:text-[#44312A]'
                       }`}
                     />
                     <span>{item.label}</span>
-                    {item.badge && (
-                      <span
-                        className={`text-[9px] font-mono px-1.5 py-0.2 rounded font-bold ${
-                          isActive
-                            ? 'bg-[#504F47] text-[#E7DDCA]'
-                            : 'bg-[#E7DDCA] text-[#44312A]'
-                        }`}
-                      >
-                        {item.badge}
-                      </span>
-                    )}
                   </Link>
                 );
               })}
+
+              {/* System / Secondary Dropdown */}
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  onClick={() => setSystemDropdownOpen(!systemDropdownOpen)}
+                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer ${
+                    secondaryNavItems.some(i => path.startsWith(i.to))
+                      ? 'bg-[#E7DDCA] text-[#44312A] font-bold'
+                      : 'text-[#504F47] hover:text-[#44312A] hover:bg-[#E7DDCA]/40'
+                  }`}
+                >
+                  <span>System</span>
+                  <ChevronDown className="h-3 w-3 text-[#504F47]" />
+                </button>
+
+                {systemDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-64 bg-white border border-[#D8CBB6] rounded-2xl shadow-xl p-2 space-y-1 z-50 animate-in fade-in zoom-in-95 duration-100">
+                    {secondaryNavItems.map((sec) => {
+                      const SecIcon = sec.icon;
+                      const isSecActive = path.startsWith(sec.to);
+                      return (
+                        <Link
+                          key={sec.to}
+                          to={sec.to}
+                          onClick={() => setSystemDropdownOpen(false)}
+                          className={`flex items-start gap-2.5 p-2 rounded-xl transition ${
+                            isSecActive
+                              ? 'bg-[#FAF7F2] border border-[#D8CBB6] text-[#44312A]'
+                              : 'hover:bg-[#FAF7F2] text-[#504F47] hover:text-[#44312A]'
+                          }`}
+                        >
+                          <div className="p-1 rounded-lg bg-[#FAF7F2] border border-[#D8CBB6] mt-0.5">
+                            <SecIcon className="h-3.5 w-3.5 text-[#44312A]" />
+                          </div>
+                          <div>
+                            <div className="font-bold text-xs text-[#44312A]">{sec.label}</div>
+                            <div className="text-[10px] text-[#8C7769] leading-tight">{sec.desc}</div>
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </nav>
           </div>
 
-          {/* 3. Right: Search, Live Status, Sync Action, and Mobile Hamburger */}
-          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-            {/* Global Search Trigger */}
+          {/* 3. Right: Interactive Action Cluster */}
+          <div className="flex items-center gap-2 sm:gap-2.5">
+            {/* Global Search Shortcut (Cmd+K) */}
             <button
               onClick={onOpenSearch}
-              className="flex items-center gap-2 py-1.5 px-3 rounded-xl bg-[#FAF7F2] border border-[#D8CBB6] hover:border-[#44312A] text-[#504F47] hover:text-[#44312A] text-xs transition duration-200 cursor-pointer shadow-xs"
-              title="Global Search (⌘K)"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#FAF7F2] hover:bg-[#E7DDCA] border border-[#D8CBB6] text-xs font-semibold text-[#504F47] hover:text-[#44312A] transition active:scale-95 shadow-2xs cursor-pointer"
+              title="Search Works & MPs (Cmd+K / Ctrl+K)"
             >
-              <Search className="h-3.5 w-3.5 text-[#504F47]" />
-              <span className="hidden xl:inline">Search...</span>
-              <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-mono bg-[#E7DDCA] rounded-md text-[#44312A] border border-[#D8CBB6]">
+              <Search className="h-3.5 w-3.5 text-[#44312A]" />
+              <span className="hidden xl:inline text-[#504F47]">Quick Search</span>
+              <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[9px] font-mono font-bold bg-white text-[#44312A] rounded border border-[#D8CBB6]">
                 ⌘K
               </kbd>
             </button>
 
-            {/* Live Data Probe Telemetry */}
-            <div className="hidden sm:flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-[#FAF7F2] border border-[#D8CBB6] text-[11px] font-mono">
-              <span
-                className={`h-2 w-2 rounded-full ${
-                  apiStatus.isOnline
-                    ? 'bg-[#44312A] shadow-xs animate-pulse'
-                    : 'bg-transparent border border-[#44312A]'
-                }`}
-              />
-              <span className="text-[#504F47] hidden md:inline">
-                {apiStatus.isOnline ? 'PostgreSQL' : 'Offline'}
-              </span>
-              <span className="text-[#44312A] font-bold">
-                {apiStatus.isOnline ? `${apiStatus.latencyMs || 18}ms` : 'Err'}
-              </span>
-            </div>
-
-            {/* Data Sync Action Button */}
+            {/* Sync Feeds Action Button */}
             <button
               onClick={onOpenSync}
               disabled={isSyncing}
-              className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-xl text-xs font-semibold bg-[#44312A] hover:bg-[#34241E] text-[#E7DDCA] border border-[#44312A] transition cursor-pointer active:scale-95 disabled:opacity-50 shadow-xs"
-              title="Synchronize Live Feeds"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#FAF7F2] hover:bg-[#E7DDCA] border border-[#D8CBB6] text-xs font-semibold text-[#44312A] transition active:scale-95 disabled:opacity-50 cursor-pointer shadow-2xs"
+              title="Synchronize parliamentary feeds"
             >
-              <RefreshCw
-                className={`h-3.5 w-3.5 text-[#E7DDCA] ${
-                  isSyncing ? 'animate-spin' : ''
-                }`}
-              />
-              <span className="hidden sm:inline font-mono">
-                {isSyncing ? 'Syncing...' : 'Sync'}
-              </span>
+              <RefreshCw className={`h-3.5 w-3.5 text-[#44312A] ${isSyncing ? 'animate-spin' : ''}`} />
+              <span className="hidden md:inline">Sync Data</span>
             </button>
 
-            {/* Mobile Hamburger Button */}
+            {/* Live Health Indicator Pill */}
+            <Link
+              to="/status"
+              className="hidden sm:flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-[#FAF7F2] border border-[#D8CBB6] text-[11px] font-mono font-semibold text-[#44312A] shadow-2xs hover:bg-[#E7DDCA] transition"
+              title="Click to inspect system telemetry"
+            >
+              <span className={`h-2 w-2 rounded-full ${apiStatus.isOnline ? 'bg-[#44312A] animate-pulse' : 'bg-[#504F47]'}`} />
+              <span>{apiStatus.isOnline ? `${apiStatus.latencyMs || 18}ms` : 'Offline'}</span>
+            </Link>
+
+            {/* Mobile Hamburger Toggle */}
             <button
-              onClick={() => setMobileMenuOpen((prev) => !prev)}
-              className="lg:hidden p-2 rounded-xl text-[#44312A] bg-[#FAF7F2] border border-[#D8CBB6] hover:bg-[#E7DDCA] transition"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="lg:hidden p-2 rounded-xl bg-[#FAF7F2] text-[#44312A] hover:bg-[#E7DDCA] border border-[#D8CBB6] transition active:scale-95"
               aria-label="Toggle navigation menu"
             >
-              {mobileMenuOpen ? (
-                <X className="h-5 w-5 text-[#44312A]" />
-              ) : (
-                <Menu className="h-5 w-5 text-[#44312A]" />
-              )}
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
           </div>
         </div>
       </div>
 
-      {/* 4. Mobile Dropdown Menu Drawer */}
+      {/* Mobile Drawer Navigation */}
       {mobileMenuOpen && (
-        <div className="lg:hidden border-t border-[#D8CBB6] bg-white/98 backdrop-blur-xl px-4 pt-3 pb-5 space-y-2 animate-in slide-in-from-top-2 duration-200 shadow-xl">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-[#504F47] px-3 pt-1">
-            Navigation Menu
+        <div className="lg:hidden border-t border-[#D8CBB6] bg-white px-4 py-4 space-y-2 animate-in slide-in-from-top-2 duration-200">
+          <div className="font-bold text-[10px] uppercase tracking-wider text-[#8C7769] px-3">
+            Core Navigation
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive =
-                item.to === '/' ? path === '/' : path.startsWith(item.to);
+          {primaryNavItems.map((item) => {
+            const Icon = item.icon;
+            const isActive =
+              item.to === '/' ? path === '/' : path.startsWith(item.to);
 
-              return (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition ${
-                    isActive
-                      ? 'bg-[#44312A] text-[#E7DDCA] shadow-xs'
-                      : 'text-[#504F47] hover:text-[#44312A] hover:bg-[#E7DDCA]/60 border border-[#D8CBB6]'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Icon
-                      className={`h-4 w-4 ${
-                        isActive ? 'text-[#E7DDCA]' : 'text-[#504F47]'
-                      }`}
-                    />
-                    <span>{item.label}</span>
-                  </div>
-                  {item.badge && (
-                    <span
-                      className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
-                        isActive
-                          ? 'bg-[#504F47] text-[#E7DDCA]'
-                          : 'bg-[#E7DDCA] text-[#44312A]'
-                      }`}
-                    >
-                      {item.badge}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-          </div>
-
-          <div className="pt-3 border-t border-[#D8CBB6] flex items-center justify-between text-xs text-[#504F47] px-1">
-            <span className="flex items-center gap-1.5 font-mono text-[11px]">
-              <span
-                className={`h-2 w-2 rounded-full ${
-                  apiStatus.isOnline ? 'bg-[#44312A]' : 'bg-transparent border border-[#44312A]'
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                onClick={() => setMobileMenuOpen(false)}
+                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition ${
+                  isActive
+                    ? 'bg-[#44312A] text-[#E7DDCA]'
+                    : 'text-[#504F47] hover:bg-[#FAF7F2]'
                 }`}
-              />
-              <span>API: {apiStatus.isOnline ? 'Operational' : 'Unavailable'}</span>
-            </span>
-            <span className="font-mono text-[10px] text-[#504F47]">
-              {lastSyncTime ? formatRelativeTime(lastSyncTime) : 'Session Active'}
-            </span>
+              >
+                <div className="flex items-center gap-2.5">
+                  <Icon className="h-4 w-4" />
+                  <span>{item.label}</span>
+                </div>
+              </Link>
+            );
+          })}
+
+          <div className="font-bold text-[10px] uppercase tracking-wider text-[#8C7769] px-3 pt-2">
+            Supporting System Views
           </div>
+          {secondaryNavItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = path.startsWith(item.to);
+
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                onClick={() => setMobileMenuOpen(false)}
+                className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition ${
+                  isActive
+                    ? 'bg-[#44312A] text-[#E7DDCA]'
+                    : 'text-[#504F47] hover:bg-[#FAF7F2]'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Icon className="h-4 w-4" />
+                  <span>{item.label}</span>
+                </div>
+              </Link>
+            );
+          })}
         </div>
       )}
     </header>

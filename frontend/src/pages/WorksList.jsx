@@ -9,12 +9,15 @@ import {
   ExternalLink,
   AlertTriangle,
   Info,
+  Sparkles,
+  Briefcase,
 } from 'lucide-react';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import { TableSkeleton } from '../components/ui/Skeleton';
 import EmptyState from '../components/ui/EmptyState';
 import ErrorState from '../components/ui/ErrorState';
+import InvestigationModal from '../components/InvestigationModal';
 import { getWorks, getWorkById } from '../services/api';
 import {
   formatCroresLakhs,
@@ -51,6 +54,9 @@ export default function WorksList() {
   // Selected work for slide-over detail panel
   const [selectedWork, setSelectedWork] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+
+  // Active AI Investigation Target
+  const [investigatingWorkId, setInvestigatingWorkId] = useState(null);
 
   const loadWorks = useCallback(async () => {
     setLoading(true);
@@ -150,121 +156,105 @@ export default function WorksList() {
         (w.work_description && w.work_description.toLowerCase().includes(term)) ||
         (w.mp_name && w.mp_name.toLowerCase().includes(term)) ||
         (w.constituency && w.constituency.toLowerCase().includes(term)) ||
-        (w.implementing_agency && w.implementing_agency.toLowerCase().includes(term)) ||
-        String(w.work_id || w.id).includes(term)
+        (w.state && w.state.toLowerCase().includes(term)) ||
+        (w.work_id && String(w.work_id).includes(term))
       );
     });
   }, [worksData.items, riskFilter, searchTerm]);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto relative">
-      {/* Header & Title */}
+      {/* 1. Header & Quick Value Proposition */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl sm:text-2xl font-black text-[#44312A] tracking-tight font-display">
-              MPLADS Works Registry & Review
+              MPLADS Works Registry
             </h1>
             <Badge variant="primary" size="sm">
               REGISTRY
             </Badge>
           </div>
           <p className="text-xs text-[#504F47] mt-0.5">
-            Search, filter, and inspect verified itemized infrastructure records and anomaly signals across parliamentary constituencies.
+            Granular repository of completed parliamentary development projects across constituencies. Click any work to inspect details or run an autonomous AI investigation.
           </p>
         </div>
 
-        <div className="flex items-center gap-3 text-xs font-mono text-[#504F47]">
-          <span>Total Database Records:</span>
-          <strong className="text-[#44312A] font-bold font-mono">
-            {formatIndianNumber(worksData.total)}
-          </strong>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setInvestigatingWorkId('278726')}
+            className="px-4 py-2 rounded-xl bg-[#44312A] hover:bg-[#34241E] text-[#E7DDCA] text-xs font-bold flex items-center gap-2 transition cursor-pointer shadow-sm"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-[#E7DDCA]" />
+            <span>Investigate Demo Work #278726</span>
+          </button>
         </div>
       </div>
 
-      {/* Filter Control Bar */}
-      <Card className="p-4">
+      {/* 2. Filter Bar & Search Controls */}
+      <Card className="p-4 bg-white">
         <form onSubmit={handleFilterApply} className="space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
-            {/* Quick Text Filter */}
-            <div className="lg:col-span-2">
-              <label className="block text-[11px] font-bold text-[#504F47] mb-1">
-                Search in Results
-              </label>
-              <div className="relative">
-                <Search className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#8C7769]" />
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search by description, MP, agency, ID..."
-                  className="w-full pl-8 pr-3 py-1.5 text-xs bg-[#FAF7F2] border border-[#D8CBB6] rounded-xl text-[#44312A] placeholder-[#8C7769] focus:outline-none focus:border-[#44312A]"
-                />
-              </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            {/* Search Input */}
+            <div className="relative">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#8C7769]" />
+              <input
+                type="text"
+                placeholder="Search description, MP, ID..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-[#D8CBB6] bg-[#FAF7F2] text-[#44312A] placeholder-[#8C7769] focus:outline-none focus:border-[#44312A]"
+              />
             </div>
 
             {/* Constituency Filter */}
             <div>
-              <label className="block text-[11px] font-bold text-[#504F47] mb-1">
-                Constituency
-              </label>
               <input
                 type="text"
+                placeholder="Filter by constituency..."
                 value={constituency}
                 onChange={(e) => setConstituency(e.target.value)}
-                placeholder="e.g. SHAHJAHANPUR"
-                className="w-full px-3 py-1.5 text-xs bg-[#FAF7F2] border border-[#D8CBB6] rounded-xl text-[#44312A] placeholder-[#8C7769] focus:outline-none focus:border-[#44312A]"
+                className="w-full px-3 py-1.5 text-xs rounded-xl border border-[#D8CBB6] bg-[#FAF7F2] text-[#44312A] placeholder-[#8C7769] focus:outline-none focus:border-[#44312A]"
               />
             </div>
 
             {/* State Filter */}
             <div>
-              <label className="block text-[11px] font-bold text-[#504F47] mb-1">
-                State
-              </label>
               <input
                 type="text"
+                placeholder="Filter by state..."
                 value={state}
                 onChange={(e) => setState(e.target.value)}
-                placeholder="e.g. Uttar Pradesh"
-                className="w-full px-3 py-1.5 text-xs bg-[#FAF7F2] border border-[#D8CBB6] rounded-xl text-[#44312A] placeholder-[#8C7769] focus:outline-none focus:border-[#44312A]"
+                className="w-full px-3 py-1.5 text-xs rounded-xl border border-[#D8CBB6] bg-[#FAF7F2] text-[#44312A] placeholder-[#8C7769] focus:outline-none focus:border-[#44312A]"
               />
             </div>
 
             {/* Category Filter */}
             <div>
-              <label className="block text-[11px] font-bold text-[#504F47] mb-1">
-                Category
-              </label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-3 py-1.5 text-xs bg-[#FAF7F2] border border-[#D8CBB6] rounded-xl text-[#44312A] focus:outline-none focus:border-[#44312A]"
+                className="w-full px-3 py-1.5 text-xs rounded-xl border border-[#D8CBB6] bg-[#FAF7F2] text-[#44312A] focus:outline-none focus:border-[#44312A]"
               >
                 <option value="">All Categories</option>
-                <option value="Drinking Water">Drinking Water</option>
-                <option value="Roads">Roads & Pathways</option>
-                <option value="Education">Education</option>
-                <option value="Health">Public Health</option>
-                <option value="Sanitation">Sanitation</option>
                 <option value="Normal/Others">Normal/Others</option>
+                <option value="Repair and Renovation">Repair and Renovation</option>
               </select>
             </div>
 
-            {/* Actions */}
-            <div className="flex items-end gap-2">
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2">
               <button
                 type="submit"
-                className="flex-1 py-1.5 px-3 rounded-xl bg-[#44312A] hover:bg-[#34241E] text-[#E7DDCA] font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1.5 shadow-md shadow-[#44312A]/20"
+                className="flex-1 py-1.5 px-3 bg-[#44312A] hover:bg-[#34241E] text-[#E7DDCA] rounded-xl text-xs font-bold transition cursor-pointer shadow-xs"
               >
-                <Filter className="h-3 w-3 text-[#E7DDCA]" />
-                <span>Apply</span>
+                Apply Filters
               </button>
-              {(constituency || state || category || searchTerm || riskFilter !== 'ALL') && (
+              {(constituency || state || category || searchTerm) && (
                 <button
                   type="button"
                   onClick={handleClearFilters}
-                  className="p-1.5 rounded-xl bg-[#FAF7F2] hover:bg-[#E7DDCA] text-[#44312A] transition cursor-pointer border border-[#D8CBB6]"
+                  className="p-1.5 rounded-xl border border-[#D8CBB6] bg-[#FAF7F2] hover:bg-[#E7DDCA] text-[#504F47] transition cursor-pointer"
                   title="Clear all filters"
                 >
                   <X className="h-4 w-4" />
@@ -272,150 +262,116 @@ export default function WorksList() {
               )}
             </div>
           </div>
-
-          {/* Secondary Risk Status Filter Pill Bar */}
-          <div className="flex items-center gap-2 pt-2 border-t border-[#D8CBB6] text-xs">
-            <span className="text-[#504F47] text-[11px] font-medium">Risk Status Filter:</span>
-            <div className="flex items-center gap-1">
-              {[
-                { id: 'ALL', label: 'All Records' },
-                { id: 'FLAGGED', label: 'Flagged Risk' },
-                { id: 'REVIEW', label: 'Needs Review' },
-                { id: 'STANDARD', label: 'Standard' },
-              ].map((rf) => (
-                <button
-                  key={rf.id}
-                  type="button"
-                  onClick={() => setRiskFilter(rf.id)}
-                  className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold transition cursor-pointer ${
-                    riskFilter === rf.id
-                      ? 'bg-[#44312A] text-[#E7DDCA] font-bold shadow-xs'
-                      : 'bg-[#FAF7F2] text-[#504F47] hover:text-[#44312A] border border-[#D8CBB6]'
-                  }`}
-                >
-                  {rf.label}
-                </button>
-              ))}
-            </div>
-          </div>
         </form>
       </Card>
 
-      {/* Error state */}
-      {error && <ErrorState message={error} onRetry={loadWorks} />}
-
-      {/* Interactive Works Table */}
+      {/* 3. Works Table */}
       {loading ? (
-        <TableSkeleton rows={10} cols={8} />
+        <TableSkeleton rows={8} />
+      ) : error ? (
+        <ErrorState message={error} onRetry={loadWorks} />
       ) : displayedItems.length === 0 ? (
         <EmptyState
-          title="No completed works match criteria"
-          description="Try adjusting your keyword, constituency, state, or category filters to broaden the search."
-          action={
-            <button
-              onClick={handleClearFilters}
-              className="px-3.5 py-1.5 rounded-xl bg-[#44312A] text-[#E7DDCA] font-bold text-xs"
-            >
-              Reset Filters
-            </button>
-          }
+          title="No Works Match Query"
+          description="Try adjusting your constituency or category filter parameters."
+          onAction={handleClearFilters}
+          actionLabel="Reset Filters"
         />
       ) : (
-        <Card className="overflow-hidden">
+        <Card className="overflow-hidden bg-white shadow-xs">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
+            <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-[#FAF7F2] border-b border-[#D8CBB6] text-[#504F47] uppercase font-mono text-[10px] tracking-wider sticky top-0 z-10 font-bold">
-                  <th className="py-3.5 px-4">Work ID</th>
-                  <th className="py-3.5 px-4 min-w-[240px]">Description</th>
-                  <th className="py-3.5 px-4">MP Name</th>
-                  <th className="py-3.5 px-4">Constituency / State</th>
-                  <th className="py-3.5 px-4">Category</th>
-                  <th className="py-3.5 px-4 text-right">Executed Cost</th>
-                  <th className="py-3.5 px-4 text-center">Risk Status</th>
-                  <th className="py-3.5 px-4 text-right">Completion</th>
-                  <th className="py-3.5 px-4 text-center">Action</th>
+                <tr className="bg-[#FAF7F2] text-[#504F47] border-b border-[#D8CBB6] uppercase font-bold text-[10px] tracking-wider">
+                  <th className="py-3 px-4">Work ID</th>
+                  <th className="py-3 px-4">Work Description</th>
+                  <th className="py-3 px-4">Member of Parliament</th>
+                  <th className="py-3 px-4">Constituency / State</th>
+                  <th className="py-3 px-4">Category</th>
+                  <th className="py-3 px-4 text-right">Sanctioned Cost</th>
+                  <th className="py-3 px-4 text-center">Completion</th>
+                  <th className="py-3 px-4 text-center">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#D8CBB6]">
                 {displayedItems.map((w) => {
-                  const rawCost = w.cost;
-                  const costFormatted = formatCroresLakhs(rawCost);
-                  const riskLevel = w.risk_level || (w.overall_score >= 80 ? 'Critical' : w.overall_score >= 60 ? 'High' : w.overall_score >= 35 ? 'Medium' : 'Low');
-                  const riskCfg = getRiskBadgeConfig(riskLevel);
+                  const costFormatted = formatCroresLakhs(w.cost || 0);
+                  const isSelected = selectedWork?.id === w.id;
 
                   return (
                     <tr
                       key={w.id}
                       onClick={() => handleRowClick(w)}
-                      className="hover:bg-[#FAF7F2] cursor-pointer transition-colors group"
+                      className={`hover:bg-[#FAF7F2] cursor-pointer transition-colors group ${
+                        isSelected ? 'bg-[#E7DDCA]/40' : ''
+                      }`}
                     >
                       {/* Work ID */}
-                      <td className="py-3.5 px-4 font-mono font-bold text-[#44312A]">
-                        {w.work_id || w.id}
+                      <td className="py-3 px-4 font-mono font-bold text-[#44312A] whitespace-nowrap">
+                        #{w.work_id || w.id}
                       </td>
 
                       {/* Description */}
-                      <td className="py-3.5 px-4">
+                      <td className="py-3 px-4 max-w-sm">
                         <div className="text-[#44312A] font-semibold line-clamp-2 leading-snug group-hover:text-[#6B5145] transition-colors">
                           {w.work_description || 'Completed MPLADS Infrastructure Project'}
                         </div>
-                        {w.implementing_agency && (
-                          <div className="text-[10px] text-[#504F47] mt-0.5 truncate font-mono">
-                            Agency: {w.implementing_agency}
+                        {w.location && (
+                          <div className="text-[10px] text-[#8C7769] mt-0.5 truncate">
+                            {w.location}
                           </div>
                         )}
                       </td>
 
                       {/* MP Name */}
-                      <td className="py-3.5 px-4 text-[#44312A] font-medium">
+                      <td className="py-3 px-4 text-[#44312A] font-medium whitespace-nowrap">
                         {w.mp_name || 'N/A'}
                       </td>
 
-                      {/* Location */}
-                      <td className="py-3.5 px-4">
-                        <div className="text-[#44312A] font-medium">{w.constituency || 'N/A'}</div>
+                      {/* Constituency / State */}
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        <div className="text-[#44312A] font-semibold">{w.constituency || 'N/A'}</div>
                         <div className="text-[10px] text-[#504F47]">{w.state || 'N/A'}</div>
                       </td>
 
                       {/* Category */}
-                      <td className="py-3.5 px-4">
+                      <td className="py-3 px-4 whitespace-nowrap">
                         <Badge variant="outline" size="sm">
                           {w.category || 'General'}
                         </Badge>
                       </td>
 
                       {/* Executed Cost */}
-                      <td className="py-3.5 px-4 text-right font-mono font-bold text-[#44312A]">
+                      <td className="py-3 px-4 text-right font-mono font-bold text-[#44312A] whitespace-nowrap">
                         {costFormatted.compact}
                       </td>
 
-                      {/* Risk Badge */}
-                      <td className="py-3.5 px-4 text-center">
-                        <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${riskCfg.colorClass}`}>
-                          <span className={`h-1.5 w-1.5 rounded-full ${riskCfg.dotColor}`} />
-                          <span>{riskCfg.label}</span>
-                        </span>
-                      </td>
-
                       {/* Completion Date */}
-                      <td className="py-3.5 px-4 text-right text-[#504F47] font-mono text-[11px]">
+                      <td className="py-3 px-4 text-center text-[#504F47] font-mono text-[11px] whitespace-nowrap">
                         {formatDate(w.completion_date || w.completion_year)}
                       </td>
 
-                      {/* Action */}
-                      <td className="py-3.5 px-4 text-center">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRowClick(w);
-                          }}
-                          className="inline-flex items-center justify-center p-1.5 rounded-lg bg-[#FAF7F2] text-[#504F47] group-hover:text-[#44312A] group-hover:bg-[#E7DDCA] border border-[#D8CBB6] transition cursor-pointer"
-                          title="Open Slide-Over Audit Panel"
-                        >
-                          <ArrowUpRight className="h-3.5 w-3.5" />
-                        </button>
+                      {/* Actions */}
+                      <td className="py-3 px-4 text-center whitespace-nowrap">
+                        <div className="flex items-center justify-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={() => setInvestigatingWorkId(String(w.work_id || w.id))}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#44312A] hover:bg-[#34241E] text-[#E7DDCA] font-bold text-[11px] transition shadow-2xs cursor-pointer"
+                            title="Run AI Investigation"
+                          >
+                            <Sparkles className="h-3 w-3" />
+                            <span>Investigate</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRowClick(w)}
+                            className="p-1 rounded-lg bg-[#FAF7F2] text-[#504F47] hover:text-[#44312A] hover:bg-[#E7DDCA] border border-[#D8CBB6] transition cursor-pointer"
+                            title="Open Slide-Over Audit Panel"
+                          >
+                            <ArrowUpRight className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -456,13 +412,13 @@ export default function WorksList() {
         </Card>
       )}
 
-      {/* Slide-Over Work Detail Panel (Drawer) in Brown & Cream */}
+      {/* 4. Slide-Over Work Detail Panel (Drawer) */}
       {selectedWork && (
-        <div className="fixed inset-y-0 right-0 w-full sm:w-[460px] bg-white border-l border-[#D8CBB6] shadow-2xl z-50 flex flex-col animate-in slide-in-from-right duration-300">
+        <div className="fixed inset-y-0 right-0 w-full sm:w-[460px] bg-white border-l border-[#D8CBB6] shadow-2xl z-40 flex flex-col animate-in slide-in-from-right duration-300">
           {/* Drawer Header */}
           <div className="p-4 border-b border-[#D8CBB6] bg-[#FAF7F2] flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="font-mono text-xs font-bold text-[#44312A] bg-[#FAF7F2] px-2.5 py-0.5 rounded border border-[#D8CBB6]">
+              <span className="font-mono text-xs font-bold text-[#44312A] bg-[#E7DDCA] px-2 py-0.5 rounded border border-[#D8CBB6]">
                 WORK #{selectedWork.work_id || selectedWork.id}
               </span>
               <Badge variant="outline" size="sm">
@@ -472,7 +428,7 @@ export default function WorksList() {
             <button
               onClick={() => setSelectedWork(null)}
               className="p-1.5 rounded-xl bg-white border border-[#D8CBB6] text-[#504F47] hover:text-[#44312A] transition cursor-pointer shadow-xs"
-              title="Close panel"
+              title="Close drawer"
             >
               <X className="h-4 w-4" />
             </button>
@@ -480,135 +436,113 @@ export default function WorksList() {
 
           {/* Drawer Body */}
           <div className="p-5 space-y-5 overflow-y-auto flex-1 text-xs text-[#504F47]">
-            {/* Title & Cost Summary */}
-            <div className="space-y-3">
+            {/* Title & Cost */}
+            <div className="space-y-2">
               <h3 className="text-sm font-bold text-[#44312A] leading-snug">
                 {selectedWork.work_description || 'Completed MPLADS Infrastructure Project'}
               </h3>
               <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#D8CBB6] flex items-center justify-between">
                 <div>
                   <span className="text-[10px] text-[#504F47] uppercase font-mono block font-bold">
-                    Executed Cost
+                    Sanctioned Cost
                   </span>
                   <span className="text-xl font-black font-mono text-[#44312A]">
                     {formatCroresLakhs(selectedWork.cost).compact}
                   </span>
-                  <span className="text-[10px] text-[#8C7769] font-mono block mt-0.5">
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] text-[#8C7769] font-mono block">Exact Outlay:</span>
+                  <span className="text-xs font-mono font-bold text-[#44312A]">
                     {formatCroresLakhs(selectedWork.cost).exact}
                   </span>
                 </div>
-                <div className="text-right">
-                  <span className="text-[10px] text-[#504F47] uppercase font-mono block font-bold">
-                    Risk Classification
-                  </span>
-                  <span className={`text-xs font-bold px-2.5 py-1 rounded-md border inline-block mt-0.5 ${getRiskBadgeConfig(selectedWork.risk_level || 'Low').colorClass}`}>
-                    {getRiskBadgeConfig(selectedWork.risk_level || 'Low').label}
-                  </span>
-                </div>
               </div>
             </div>
 
-            {/* Audit Review Explanations & Anomaly Signals */}
-            <div className="space-y-2">
+            {/* AI Investigation Trigger Hero Button */}
+            <div className="p-4 rounded-2xl bg-[#44312A] text-white space-y-2 shadow-md">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-[#504F47] flex items-center gap-1.5">
-                  <AlertTriangle className="h-3.5 w-3.5 text-[#44312A]" />
-                  <span>Audit Review Signals</span>
+                <span className="font-bold text-xs flex items-center gap-1.5 text-[#E7DDCA]">
+                  <Sparkles className="h-4 w-4 text-[#E7DDCA]" />
+                  <span>Autonomous AI Investigation</span>
                 </span>
-                <span className="text-[10px] font-mono text-[#8C7769]">Heuristic Engine</span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/10 text-white border border-white/20">
+                  8 Tools
+                </span>
               </div>
-              <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#D8CBB6] space-y-2 text-[#44312A] leading-relaxed">
-                <div className="font-bold text-[#44312A] text-xs">
-                  {selectedWork.risk_level === 'Critical' || selectedWork.risk_level === 'High'
-                    ? 'Statistical Cost Outlier / Priority Verification Required'
-                    : 'Standard Record / Baseline Verification'}
-                </div>
-                <p className="text-[11px] text-[#504F47]">
-                  {selectedWork.flags && selectedWork.flags.length > 0
-                    ? `Active indicators: ${selectedWork.flags.join(', ')}.`
-                    : 'This work item conforms to standard category cost ranges. Routine administrative verification applies.'}
-                </p>
-                <div className="text-[10px] text-[#8C7769] pt-1.5 border-t border-[#D8CBB6] flex items-center gap-1">
-                  <Info className="h-3 w-3 text-[#44312A] shrink-0" />
-                  <span>{RISK_DISCLAIMER}</span>
-                </div>
-              </div>
+              <p className="text-[11px] text-[#FAF7F2]/80 leading-relaxed">
+                Execute multi-signal cost benchmarking, duplicate verification, MP financials check, and data-quality audit on this work item.
+              </p>
+              <button
+                onClick={() => setInvestigatingWorkId(String(selectedWork.work_id || selectedWork.id))}
+                className="w-full py-2.5 px-4 rounded-xl bg-[#FAF7F2] hover:bg-white text-[#44312A] font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-xs mt-1"
+              >
+                <span>Launch AI Investigation</span>
+                <Sparkles className="h-3.5 w-3.5 text-[#44312A]" />
+              </button>
             </div>
 
-            {/* Administrative Scope Breakdown */}
+            {/* Administrative Breakdown */}
             <div className="space-y-2">
               <span className="text-[11px] font-bold uppercase tracking-wider text-[#504F47]">
-                Administrative & Execution Scope
+                Administrative Scope
               </span>
               <div className="space-y-2 p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#D8CBB6]">
-                <div className="flex justify-between py-1.5 border-b border-[#D8CBB6]">
-                  <span className="text-[#504F47]">Member of Parliament:</span>
+                <div className="flex justify-between py-1 border-b border-[#D8CBB6]">
+                  <span>Member of Parliament:</span>
                   <strong className="text-[#44312A]">{selectedWork.mp_name || 'N/A'}</strong>
                 </div>
-                <div className="flex justify-between py-1.5 border-b border-[#D8CBB6]">
-                  <span className="text-[#504F47]">Parliamentary House:</span>
+                <div className="flex justify-between py-1 border-b border-[#D8CBB6]">
+                  <span>Parliamentary House:</span>
                   <span className="text-[#44312A]">{selectedWork.house || 'Lok Sabha'}</span>
                 </div>
-                <div className="flex justify-between py-1.5 border-b border-[#D8CBB6]">
-                  <span className="text-[#504F47]">Constituency:</span>
-                  <span className="text-[#44312A]">{selectedWork.constituency || 'N/A'}</span>
+                <div className="flex justify-between py-1 border-b border-[#D8CBB6]">
+                  <span>Constituency & State:</span>
+                  <span className="text-[#44312A] font-semibold">{selectedWork.constituency || 'N/A'}, {selectedWork.state || ''}</span>
                 </div>
-                <div className="flex justify-between py-1.5 border-b border-[#D8CBB6]">
-                  <span className="text-[#504F47]">State / Nodal District:</span>
-                  <span className="text-[#44312A]">{selectedWork.state || 'N/A'} {selectedWork.district ? `(${selectedWork.district})` : ''}</span>
-                </div>
-                <div className="flex justify-between py-1.5 border-b border-[#D8CBB6]">
-                  <span className="text-[#504F47]">Implementing Agency:</span>
-                  <span className="text-[#504F47] font-mono text-[11px]">
+                <div className="flex justify-between py-1 border-b border-[#D8CBB6]">
+                  <span>Implementing Agency:</span>
+                  <span className="text-[#44312A] font-mono text-[11px]">
                     {selectedWork.implementing_agency || 'Unspecified in Feed'}
                   </span>
                 </div>
-                <div className="flex justify-between py-1.5 border-b border-[#D8CBB6]">
-                  <span className="text-[#504F47]">Beneficiaries:</span>
-                  <span className="text-[#44312A] font-mono font-semibold">
-                    {formatIndianNumber(selectedWork.beneficiaries)}
+                <div className="flex justify-between py-1 border-b border-[#D8CBB6]">
+                  <span>Location Details:</span>
+                  <span className="text-[#44312A] text-right max-w-[60%] truncate">
+                    {selectedWork.location || 'General Area'}
                   </span>
                 </div>
-                <div className="flex justify-between py-1.5">
-                  <span className="text-[#504F47]">GPS Coordinates:</span>
-                  <span className="text-[#44312A] font-mono text-[11px] font-semibold">
+                <div className="flex justify-between py-1">
+                  <span>GPS Geotagging:</span>
+                  <span className="text-[#8C7769] font-mono text-[11px]">
                     {selectedWork.latitude && selectedWork.longitude
-                      ? `${Number(selectedWork.latitude).toFixed(5)}, ${Number(selectedWork.longitude).toFixed(5)}`
-                      : 'Coordinates Pending Verification'}
+                      ? `${selectedWork.latitude}, ${selectedWork.longitude}`
+                      : 'Unverified (0 GPS Points)'}
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Ingestion & Provenance Audit */}
-            <div className="space-y-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-[#504F47]">
-                Data Lineage & Provenance
-              </span>
-              <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#D8CBB6] space-y-1 text-[11px]">
-                <div className="flex justify-between">
-                  <span className="text-[#504F47]">Ingestion Source:</span>
-                  <span className="text-[#44312A] font-mono font-semibold">{selectedWork.source || 'empowered_indian'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-[#504F47]">Record Created:</span>
-                  <span className="text-[#8C7769] font-mono">{formatDate(selectedWork.created_at)}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Direct Navigation Button */}
+            {/* Direct Full Dossier Navigation Link */}
             <div className="pt-2">
               <Link
                 to={`/works/${selectedWork.work_id || selectedWork.id}`}
-                className="w-full py-2.5 px-4 rounded-xl bg-[#44312A] hover:bg-[#34241E] text-[#E7DDCA] font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-md shadow-[#44312A]/20"
+                className="w-full py-2.5 px-4 rounded-xl bg-[#FAF7F2] hover:bg-[#E7DDCA] text-[#44312A] border border-[#D8CBB6] font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-xs"
               >
-                <span>Open Full Investigation Dossier</span>
-                <ExternalLink className="h-3.5 w-3.5 text-[#E7DDCA]" />
+                <span>Open Full Work Dossier</span>
+                <ExternalLink className="h-3.5 w-3.5 text-[#504F47]" />
               </Link>
             </div>
           </div>
         </div>
+      )}
+
+      {/* AI Investigation Modal */}
+      {investigatingWorkId && (
+        <InvestigationModal
+          workId={investigatingWorkId}
+          onClose={() => setInvestigatingWorkId(null)}
+        />
       )}
     </div>
   );

@@ -12,17 +12,20 @@ import {
   ExternalLink,
   Layers,
   Sparkles,
+  Search,
 } from 'lucide-react';
 import KPIGrid from '../components/dashboard/KPIGrid';
 import ExpenditureChart from '../components/charts/ExpenditureChart';
 import CategoryDistributionChart from '../components/charts/CategoryDistributionChart';
 import SystemHealthRiskPanel from '../components/dashboard/SystemHealthRiskPanel';
 import MapContainer from '../components/map/MapContainer';
+import InvestigationModal from '../components/InvestigationModal';
 import Badge from '../components/ui/Badge';
 import ErrorState from '../components/ui/ErrorState';
 import { getDashboard, getHealth } from '../services/api';
 import { fetchRiskSummary } from '../services/analytics';
 import { Link } from '../router/Router';
+import { formatCroresLakhs, formatIndianNumber } from '../utils/formatting';
 
 export default function Dashboard({ onOpenSync = () => {} }) {
   const [dashboardData, setDashboardData] = useState(null);
@@ -31,6 +34,7 @@ export default function Dashboard({ onOpenSync = () => {} }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  const [investigatingWorkId, setInvestigatingWorkId] = useState(null);
 
   const loadDashboardData = useCallback(async (isManualRefresh = false) => {
     if (isManualRefresh) {
@@ -63,7 +67,7 @@ export default function Dashboard({ onOpenSync = () => {} }) {
     } catch (err) {
       console.error('[Dashboard Load Error]:', err);
       setError(
-        'Unable to load live dashboard aggregates from the JanDrishti backend service at http://localhost:8000. Please verify that the FastAPI backend is running.'
+        'Unable to load live dashboard aggregates from the JanDrishti backend. Please verify that the backend is running on http://localhost:8000.'
       );
     } finally {
       setLoading(false);
@@ -75,13 +79,15 @@ export default function Dashboard({ onOpenSync = () => {} }) {
     loadDashboardData();
   }, [loadDashboardData]);
 
+  // Sample real work for quick 1-click judge demo investigation
+  const demoWorkId = '278726';
+
   return (
     <div className="space-y-10 max-w-7xl mx-auto pb-12">
-      {/* 1. Bespoke Asymmetrical Hero Section in Editorial Brown & Cream */}
+      {/* 1. Bespoke Editorial Hero Section */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         {/* Left 8-Cols: Editorial Value Proposition & Actions */}
         <div className="lg:col-span-8 rounded-3xl bg-white border border-[#D8CBB6] shadow-sm p-6 sm:p-8 lg:p-10 relative overflow-hidden flex flex-col justify-between">
-          {/* Subtle warm ambient gradients */}
           <div className="absolute -top-16 -left-16 w-80 h-80 bg-[#44312A]/5 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute top-1/2 right-0 w-64 h-64 bg-[#504F47]/5 rounded-full blur-3xl pointer-events-none" />
 
@@ -122,13 +128,14 @@ export default function Dashboard({ onOpenSync = () => {} }) {
                 <span>Explore Works Registry</span>
                 <ArrowRight className="h-3.5 w-3.5 text-[#E7DDCA]" />
               </Link>
-              <Link
-                to="/mps"
-                className="px-5 py-2.5 rounded-xl bg-[#FAF7F2] hover:bg-[#E7DDCA] active:scale-95 text-[#44312A] font-bold text-xs border border-[#D8CBB6] flex items-center gap-2 transition duration-200 cursor-pointer shadow-xs"
+
+              <button
+                onClick={() => setInvestigatingWorkId(demoWorkId)}
+                className="px-4 py-2.5 rounded-xl bg-[#FAF7F2] hover:bg-[#E7DDCA] active:scale-95 text-[#44312A] font-bold text-xs border border-[#D8CBB6] flex items-center gap-2 transition duration-200 cursor-pointer shadow-xs"
               >
-                <Users className="h-4 w-4 text-[#504F47]" />
-                <span>MP Financial Ledgers</span>
-              </Link>
+                <Sparkles className="h-4 w-4 text-[#44312A]" />
+                <span>Demo AI Investigation (#{demoWorkId})</span>
+              </button>
             </div>
 
             <button
@@ -157,7 +164,9 @@ export default function Dashboard({ onOpenSync = () => {} }) {
               <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#D8CBB6] space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-[#504F47] font-medium">PostgreSQL Live Store:</span>
-                  <span className="font-mono font-bold text-[#44312A]">Connected</span>
+                  <span className="font-mono font-bold text-[#44312A]">
+                    {dashboardData?.works_summary?.total_works ? `${dashboardData.works_summary.total_works} Works Indexed` : 'Connected'}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between text-[11px] font-mono text-[#504F47]">
                   <span>FastAPI Probe Latency:</span>
@@ -177,24 +186,41 @@ export default function Dashboard({ onOpenSync = () => {} }) {
             </div>
           </div>
 
-          {/* Institutional Compliance Notice */}
-          <div className="mt-4 pt-3 border-t border-[#D8CBB6] text-[11px] text-[#504F47] leading-snug flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-[#44312A] shrink-0" />
-            <span>Strict statistical auditing with zero fabricated values.</span>
+          {/* Quick AI Investigation Hero Callout */}
+          <div className="mt-4 pt-3 border-t border-[#D8CBB6] bg-[#FAF7F2] p-3 rounded-2xl border border-[#D8CBB6] space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-bold text-[#44312A] flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5 text-[#44312A]" />
+                <span>Featured Investigation</span>
+              </span>
+              <span className="text-[10px] font-mono font-bold text-[#44312A] bg-white px-1.5 py-0.5 rounded border border-[#D8CBB6]">
+                #{demoWorkId}
+              </span>
+            </div>
+            <p className="text-[11px] text-[#504F47] line-clamp-2">
+              School Bus procurement for Keshav Smruti Higher Secondary School, South Goa.
+            </p>
+            <button
+              onClick={() => setInvestigatingWorkId(demoWorkId)}
+              className="w-full py-1.5 px-3 rounded-xl bg-[#44312A] hover:bg-[#34241E] text-[#E7DDCA] text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+            >
+              <span>Run AI Investigation</span>
+              <ArrowRight className="h-3 w-3" />
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Error state */}
+      {/* Error state if backend unreachable */}
       {error && (
         <ErrorState
-          title="Unable to Load Live Dashboard Aggregates"
+          title="Backend Connection Notice"
           message={error}
           onRetry={() => loadDashboardData(false)}
         />
       )}
 
-      {/* 2. Asymmetric Top KPI Cards Grid */}
+      {/* 2. Top KPI Cards Grid */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-xs font-bold uppercase tracking-wider text-[#504F47] flex items-center gap-2">
@@ -208,7 +234,7 @@ export default function Dashboard({ onOpenSync = () => {} }) {
         <KPIGrid dashboardData={dashboardData} loading={loading} />
       </section>
 
-      {/* 3. Recharts Section (Asymmetrical 7 / 5 Visual Grid) */}
+      {/* 3. Recharts Visual Section */}
       <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         <div className="lg:col-span-7">
           <ExpenditureChart dashboardData={dashboardData} loading={loading} />
@@ -221,7 +247,7 @@ export default function Dashboard({ onOpenSync = () => {} }) {
         </div>
       </section>
 
-      {/* 4. Interactive GIS Map Canvas with Slide-Over Drawer */}
+      {/* 4. Interactive GIS Map Canvas */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-xs font-bold uppercase tracking-wider text-[#504F47] flex items-center gap-2">
@@ -243,6 +269,14 @@ export default function Dashboard({ onOpenSync = () => {} }) {
           loading={loading}
         />
       </section>
+
+      {/* AI Investigation Modal */}
+      {investigatingWorkId && (
+        <InvestigationModal
+          workId={investigatingWorkId}
+          onClose={() => setInvestigatingWorkId(null)}
+        />
+      )}
     </div>
   );
 }
