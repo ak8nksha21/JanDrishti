@@ -54,8 +54,15 @@ data/raw/*
 data/processed/*
 !data/processed/.gitkeep
 
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+backend/data/
+
 # IDE
 .idea/
 .vscode/
 *.sublime-project
 *.sublime-workspace
+

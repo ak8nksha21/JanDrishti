@@ -1,20 +1,34 @@
+import logging
+import os
 from typing import Generator
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from app.config import settings
 
-if settings.database_url.startswith("sqlite"):
+logger = logging.getLogger("jandrishti.database")
+
+db_url = settings.database_url
+
+if db_url.startswith("sqlite"):
     engine_kwargs = {"connect_args": {"check_same_thread": False}}
-    if ":memory:" in settings.database_url or settings.database_url in ("sqlite://", "sqlite:///"):
+    if ":memory:" in db_url or db_url in ("sqlite://", "sqlite:///"):
         engine_kwargs["poolclass"] = StaticPool
-    engine = create_engine(settings.database_url, **engine_kwargs)
+    engine = create_engine(db_url, **engine_kwargs)
 else:
-    engine = create_engine(
-        settings.database_url,
-        pool_pre_ping=True,
-        pool_recycle=300
-    )
+    try:
+        engine = create_engine(
+            db_url,
+            pool_pre_ping=True,
+            pool_recycle=300
+        )
+    except Exception as exc:
+        logger.warning(
+            f"Unable to initialize PostgreSQL engine ({exc}). Falling back to local SQLite database at data/jandrishti.db"
+        )
+        os.makedirs("data", exist_ok=True)
+        sqlite_url = "sqlite:///./data/jandrishti.db"
+        engine = create_engine(sqlite_url, connect_args={"check_same_thread": False})
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

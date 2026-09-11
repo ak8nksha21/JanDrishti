@@ -7,7 +7,14 @@ from ml.risk_engine import (
     BAND_HIGH_MAX,
     ALERT_SCORE_THRESHOLD,
 )
-from app.services.risk.service import RiskService, risk_service
+from app.services.risk.service import (
+    RiskService,
+    risk_service,
+    run_full_risk_pipeline,
+    get_work_id_str,
+    calculate_geographic_scores,
+    calculate_utilization_scores,
+)
 from app.services.risk.engine import RiskEngine, risk_engine
 from app.services.risk.scoring import RiskScorer, ScoringResult, ContributingSignal
 from app.services.risk.reasons import RiskReasonGenerator
@@ -19,6 +26,10 @@ __all__ = [
     "risk_engine",
     "RiskService",
     "risk_service",
+    "run_full_risk_pipeline",
+    "get_work_id_str",
+    "calculate_geographic_scores",
+    "calculate_utilization_scores",
     "RiskScorer",
     "ScoringResult",
     "ContributingSignal",

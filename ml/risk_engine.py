@@ -42,10 +42,16 @@ DEFAULT_SIGNAL_WEIGHTS: Dict[str, float] = {
 # Legacy signal name mappings for backward compatibility
 LEGACY_SIGNAL_MAP: Dict[str, str] = {
     "cost_anomaly": "cost_anomaly_score",
+    "cost_score": "cost_anomaly_score",
     "duplicate_similarity": "duplicate_score",
+    "duplicate_risk": "duplicate_score",
     "geographic_anomaly": "geographic_score",
+    "geographic_collision": "geographic_score",
     "financial_anomaly": "utilization_score",
+    "utilization_risk": "utilization_score",
     "data_quality_issue": "data_quality_score",
+    "data_quality_penalty": "data_quality_score",
+    "ml_anomaly": "ml_anomaly_score",
 }
 
 # Risk Band Boundaries (0–100 scale)
@@ -305,6 +311,59 @@ class RiskEngine:
             "missing_signals": sorted(missing_list),
             "human_review_required": human_review_required,
             "alert_required": alert_required,
+        }
+
+    def compute_composite_score(
+        self,
+        cost_score: Optional[float] = None,
+        ml_score: Optional[float] = None,
+        dup_score: Optional[float] = None,
+        util_score: Optional[float] = None,
+        geo_score: Optional[float] = None,
+        dq_score: Optional[float] = None
+    ) -> Dict[str, Any]:
+        """Compute composite risk score, flags, and assigned tier for a work item."""
+        signals = {}
+        if cost_score is not None:
+            signals["cost_anomaly_score"] = cost_score
+        if ml_score is not None:
+            signals["ml_anomaly_score"] = ml_score
+        if dup_score is not None:
+            signals["duplicate_score"] = dup_score
+        if util_score is not None:
+            signals["utilization_score"] = util_score
+        if geo_score is not None:
+            signals["geographic_score"] = geo_score
+        if dq_score is not None:
+            signals["data_quality_score"] = dq_score
+
+        res = self.compute_risk(signals)
+        overall = res.get("overall_score") or 0.0
+        level = res.get("risk_level") or "Low"
+
+        flags = []
+        if cost_score is not None and cost_score >= 60.0:
+            flags.append("Cost Anomaly")
+        if dup_score is not None and dup_score >= 60.0:
+            flags.append("Duplicate Suspect")
+        if ml_score is not None and ml_score >= 65.0:
+            flags.append("Multivariate Outlier")
+        if util_score is not None and util_score >= 60.0:
+            flags.append("Utilization Risk")
+        if geo_score is not None and geo_score >= 60.0:
+            flags.append("Geographic Proximity")
+        if dq_score is not None and dq_score >= 65.0:
+            flags.append("Data Incomplete")
+
+        peak = max([s for s in [cost_score, ml_score, dup_score, util_score, geo_score, dq_score] if s is not None] or [0.0])
+
+        return {
+            "overall_score": overall,
+            "risk_level": level,
+            "flags": flags,
+            "observations": res.get("observations", []),
+            "weighted_base": overall,
+            "peak_component": peak
         }
 
     @staticmethod

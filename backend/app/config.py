@@ -4,6 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     DATABASE_URL: Optional[str] = None
+
     POSTGRES_DB: str = "jandrishti"
     POSTGRES_USER: str = "postgres"
     POSTGRES_PASSWORD: str = "postgres"

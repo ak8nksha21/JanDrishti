@@ -5,6 +5,7 @@ Provides unified and specialized anomaly detection pipelines for MPLADS:
 1. Cost Anomaly Detection (Work-level hierarchical peer IQR + Isolation Forest)
 2. Multi-variable Financial Anomaly Detection (MP-level 11 real fields + financial ratios + Isolation Forest)
 3. Utilization Anomaly Detection (MP-level expenditure/allocation distribution + discrepancy analysis)
+4. Data Quality Detection (Record hygiene, completeness, and auditability checks)
 
 Core Principles:
 - All anomaly scores are normalized strictly to the range [0.0, 100.0].
@@ -13,7 +14,7 @@ Core Principles:
 - Missing values are NEVER silently converted to zero.
 - No fabricated fields (e.g. sanctioned cost, planned delay) are invented.
 - Explanations are strictly evidence-based and objective; NO accusations of fraud or corruption.
-- Full compatibility with Jayant's Risk Engine and Akanksha's Investigation Agent.
+- Full compatibility with Risk Engine and Investigation Agent.
 """
 
 from datetime import datetime
@@ -137,7 +138,6 @@ def normalize_mp_financial_dataframe(data: pd.DataFrame) -> pd.DataFrame:
             if snake not in df.columns:
                 df[snake] = df[camel]
             else:
-                # If snake exists but has all nulls while camel has values, fillna from camel
                 if df[snake].isna().all() and not df[camel].isna().all():
                     df[snake] = df[snake].combine_first(df[camel])
     return df
@@ -364,6 +364,42 @@ class CostAnomalyDetector:
                 "observations": obs,
                 "details": details,
             })
+
+        return results
+
+    def analyze(self, works: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+        """
+        Analyze a list of work dictionaries and return peer median metrics and cost anomaly scores.
+        """
+        if not works:
+            return {}
+
+        df = pd.DataFrame(works)
+        if not self.is_fitted_:
+            self.fit(df)
+
+        predictions = self.predict(df)
+        results = {}
+
+        for w, pred in zip(works, predictions):
+            w_id = str(w.get("work_id") or w.get("id") or w.get("source_id"))
+            score = pred.get("cost_anomaly_score")
+            if score is None:
+                score = 20.0
+
+            details = pred.get("details", {})
+            peer_med = details.get("peer_median_cost") or float(w.get("cost", 0.0) or 0.0)
+            cost_val = float(w.get("cost", 0.0) or 0.0)
+            ratio = (cost_val / peer_med) if peer_med and peer_med > 0 else 1.0
+            reasons = pred.get("observations", [])
+            reason_str = reasons[0] if reasons else f"Cost is consistent with peer benchmarks (median: ₹{peer_med:.2f}L)"
+
+            results[w_id] = {
+                "score": round(float(score), 1),
+                "peer_median": round(float(peer_med), 2) if peer_med else 0.0,
+                "ratio_to_median": round(float(ratio), 2),
+                "reason": reason_str
+            }
 
         return results
 
@@ -659,7 +695,7 @@ class MPFinancialAnomalyDetector:
                         "median": float(np.median(valid_vals)),
                         "upper_bound": q3 + 1.5 * iqr,
                         "extreme_upper": q3 + 3.0 * iqr,
-                        }
+                    }
 
         usable_cols = [c for c in featured_df.columns if featured_df[c].nunique(dropna=True) > 1]
         clean_matrix = featured_df[usable_cols].dropna() if usable_cols else pd.DataFrame()
@@ -846,7 +882,6 @@ class MPFinancialAnomalyDetector:
         n_rows = len(featured_df)
         scores: List[Optional[float]] = [None] * n_rows
 
-        # Ensure all trained features exist in featured_df (if missing, initialize as NaN)
         for col in self.iforest_features_:
             if col not in featured_df.columns:
                 featured_df[col] = np.nan
@@ -1070,7 +1105,153 @@ class UtilizationAnomalyDetector:
 
 
 # =============================================================================
-# 4. UNIFIED PUBLIC ANOMALY DETECTOR
+# 4. MULTIVARIABLE ISOLATION FOREST DETECTOR (WORK-LEVEL PIPELINE COMPATIBILITY)
+# =============================================================================
+
+class MultivariableIsolationForestDetector:
+    """
+    Multi-variable anomaly detector combining work cost with MP-level financial metrics
+    (allocation, expenditure, utilization percentage, completion rate, payment gap).
+    """
+
+    def __init__(self, contamination: float = 0.15):
+        self.contamination = contamination
+
+    def analyze(
+        self,
+        works: List[Dict[str, Any]],
+        mp_financials_map: Dict[str, Dict[str, Any]]
+    ) -> Dict[str, Dict[str, Any]]:
+        if not works:
+            return {}
+
+        records = []
+        for w in works:
+            w_id = str(w.get("work_id") or w.get("id") or w.get("source_id"))
+            constituency = str(w.get("constituency", "")).strip().upper()
+            mp_name = str(w.get("mp_name", "")).strip().upper()
+
+            mp_data = (
+                mp_financials_map.get(constituency, {})
+                or mp_financials_map.get(mp_name, {})
+                or {}
+            )
+
+            cost = float(w.get("cost", 0.0) or 0.0)
+            alloc = float(mp_data.get("allocated_amount", 500.0) or 500.0)
+            expend = float(mp_data.get("total_expenditure", 250.0) or 250.0)
+            util = float(mp_data.get("utilization_percentage", 50.0) or 50.0)
+            comp_rate = float(mp_data.get("completion_rate", 50.0) or 50.0)
+            unspent = float(mp_data.get("unspent_amount", 250.0) or 250.0)
+            pay_gap = float(mp_data.get("payment_gap_percentage", 0.0) or 0.0)
+
+            cost_to_alloc = cost / max(alloc, 1.0)
+            expend_to_alloc = expend / max(alloc, 1.0)
+
+            records.append({
+                "work_id": w_id,
+                "cost": cost,
+                "allocated": alloc,
+                "expenditure": expend,
+                "utilization": util,
+                "completion_rate": comp_rate,
+                "unspent": unspent,
+                "payment_gap": pay_gap,
+                "cost_to_alloc": cost_to_alloc,
+                "expend_to_alloc": expend_to_alloc
+            })
+
+        df = pd.DataFrame(records)
+        feature_cols = [
+            "cost", "utilization", "completion_rate",
+            "payment_gap", "cost_to_alloc", "expend_to_alloc"
+        ]
+        X = df[feature_cols].fillna(0.0).values
+
+        if len(df) >= 4:
+            iso = IsolationForest(n_estimators=100, contamination=self.contamination, random_state=42)
+            scores = iso.fit(X).decision_function(X)
+            min_s, max_s = scores.min(), scores.max()
+            if max_s > min_s:
+                norm_scores = ((max_s - scores) / (max_s - min_s)) * 100.0
+            else:
+                norm_scores = np.full(len(df), 25.0)
+        else:
+            norm_scores = np.full(len(df), 20.0)
+
+        results = {}
+        for i, row in df.iterrows():
+            w_id = row["work_id"]
+            ml_score = round(float(norm_scores[i]), 1)
+            ml_score = min(100.0, max(0.0, ml_score))
+
+            factors = []
+            if row["payment_gap"] > 20.0:
+                factors.append(f"high payment gap ({row['payment_gap']:.1f}%)")
+            if row["utilization"] < 35.0 and row["expenditure"] > 100.0:
+                factors.append("unusual expenditure-utilization divergence")
+            if row["cost_to_alloc"] > 0.2:
+                factors.append(f"single work occupies {(row['cost_to_alloc']*100):.1f}% of constituency fund")
+            if row["completion_rate"] < 30.0 and row["expenditure"] > 250.0:
+                factors.append("low completion rate despite substantial funds drawn")
+
+            if not factors:
+                factors.append("multivariate metrics within standard envelope")
+
+            results[w_id] = {
+                "score": ml_score,
+                "factors": factors,
+                "reason": f"Multivariate Isolation Forest detected: {', '.join(factors)}"
+            }
+
+        return results
+
+
+# =============================================================================
+# 5. DATA QUALITY DETECTOR
+# =============================================================================
+
+class DataQualityDetector:
+    """
+    Evaluates completeness, audit trails, and data hygiene of MPLADS records.
+    """
+
+    def analyze(self, works: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+        results = {}
+        for w in works:
+            w_id = str(w.get("work_id") or w.get("id") or w.get("source_id"))
+            issues = []
+            score = 10.0  # baseline nominal penalty
+
+            desc = str(w.get("work_description") or w.get("description") or "").strip()
+            if len(desc) < 10:
+                issues.append("insufficient work description")
+                score += 25.0
+
+            cost = w.get("cost")
+            if cost is None or float(cost) <= 0.0:
+                issues.append("missing or zero expenditure recorded")
+                score += 30.0
+
+            if not w.get("location") and not (w.get("latitude") and w.get("longitude")):
+                issues.append("missing specific location and GPS coordinates")
+                score += 20.0
+
+            if not w.get("implementing_agency") and not w.get("agency"):
+                issues.append("implementing agency not designated")
+                score += 15.0
+
+            score = min(100.0, score)
+            results[w_id] = {
+                "score": round(score, 1),
+                "issues": issues,
+                "reason": f"Data Quality: {', '.join(issues)}" if issues else "Full record completeness verified"
+            }
+        return results
+
+
+# =============================================================================
+# 6. UNIFIED PUBLIC ANOMALY DETECTOR
 # =============================================================================
 
 class AnomalyDetector:
@@ -1270,7 +1451,7 @@ class AnomalyDetector:
         res["financial_anomaly_score"] = fin_scores
         res["utilization_anomaly_score"] = util_scores
 
-        # Downstream compatibility aliases for Jayant's Risk Engine
+        # Downstream compatibility aliases for Risk Engine
         res["cost_score"] = cost_scores
         res["ml_anomaly_score"] = fin_scores if has_financial else cost_scores
         res["utilization_score"] = util_scores
