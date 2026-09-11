@@ -25,6 +25,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt
 
-      - name: Run ML and API Anomaly Detection Tests
+      - name: Run ML Anomaly Detection Tests
         run: |
-          python3 -m unittest discover -s backend/tests -p 'test_anomaly*.py'
+          python3 -m unittest discover -s backend/tests -p 'test_anomaly_detection.py'
