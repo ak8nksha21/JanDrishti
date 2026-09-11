@@ -17,10 +17,12 @@ from typing import Any, Dict, List, Optional, Union
 import pandas as pd
 
 from ml.geo_detection import validate_coordinates
-
-# MPLADS was officially launched by the Government of India in December 1993
-MPLADS_EARLIEST_YEAR = 1993
-MAX_PLAUSIBLE_FUTURE_YEAR = 2030
+from ml.config import (
+    MPLADS_EARLIEST_YEAR,
+    MAX_PLAUSIBLE_FUTURE_YEAR,
+    MAX_SINGLE_WORK_COST_INR,
+    MIN_DESCRIPTION_LENGTH,
+)
 
 # Common placeholder/junk text strings found in uncurated datasets
 SUSPICIOUS_PLACEHOLDERS = {
@@ -84,7 +86,7 @@ class WorkDataQualityAuditor:
     and consistency for individual works and batches.
     """
 
-    def __init__(self, max_single_work_cost_inr: float = 1_000_000_000.0):
+    def __init__(self, max_single_work_cost_inr: float = MAX_SINGLE_WORK_COST_INR):
         """
         :param max_single_work_cost_inr: Cap for realistic single local MPLADS work (default 100 Crore INR).
         """
@@ -164,7 +166,7 @@ class WorkDataQualityAuditor:
                     "message": f"Work description is a placeholder/junk value: '{clean_desc}'."
                 })
                 field_status["work_description"] = "placeholder"
-            elif len(clean_desc) < 5:
+            elif len(clean_desc) < MIN_DESCRIPTION_LENGTH:
                 issues.append({
                     "code": QualityIssueCode.TOO_SHORT_DESCRIPTION,
                     "severity": QualityIssueSeverity.WARNING,

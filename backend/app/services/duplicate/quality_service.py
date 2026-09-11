@@ -41,9 +41,20 @@ class DataQualityService:
             query = query.filter(Work.category.ilike(f"%{category.strip()}%"))
 
         works = query.order_by(Work.id.desc()).limit(limit).all()
-        logger.info(f"Auditing data quality for {len(works)} works")
+        logger.info(
+            f"Starting data quality audit for {len(works)} works (constituency='{constituency}', "
+            f"state='{state}', category='{category}')"
+        )
 
         batch_result = self.auditor.audit_batch(works)
+
+        logger.info(
+            f"Completed data quality audit for {len(works)} works: "
+            f"clean={batch_result['clean_works_count']}, "
+            f"critical_issues={batch_result['total_critical_issues']}, "
+            f"warnings={batch_result['total_warnings']}, "
+            f"avg_completeness={batch_result['average_completeness_score']:.2%}"
+        )
 
         if only_issues:
             batch_result["work_reports"] = [

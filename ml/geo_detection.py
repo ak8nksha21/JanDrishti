@@ -20,12 +20,21 @@ from ml.duplicate_detection import (
     normalize_text,
     DuplicateDetector
 )
-
-# Geographic Bounding Box for India (inclusive of island territories)
-INDIA_LAT_MIN = 6.0
-INDIA_LAT_MAX = 38.0
-INDIA_LON_MIN = 68.0
-INDIA_LON_MAX = 98.0
+from ml.config import (
+    INDIA_LAT_MIN,
+    INDIA_LAT_MAX,
+    INDIA_LON_MIN,
+    INDIA_LON_MAX,
+    DEFAULT_MAX_GEO_DISTANCE_METERS,
+    DEFAULT_IMMEDIATE_OVERLAP_METERS,
+    DEFAULT_STREET_COMPOUND_METERS,
+    DEFAULT_NEIGHBORHOOD_METERS,
+    DEFAULT_LOCALITY_METERS,
+    DEFAULT_GEO_SIMILARITY_THRESHOLD,
+    DEFAULT_GEO_DUPLICATE_SIMILARITY_THRESHOLD,
+    DEFAULT_GEO_DUPLICATE_CATEGORY_SIMILARITY_THRESHOLD,
+    DEFAULT_GEO_DUPLICATE_MAX_DISTANCE_METERS,
+)
 
 
 def validate_coordinates(
@@ -122,15 +131,15 @@ def validate_coordinates(
 
 def classify_proximity_level(distance_meters: float) -> str:
     """Classify physical proximity into descriptive tiers."""
-    if distance_meters <= 50.0:
+    if distance_meters <= DEFAULT_IMMEDIATE_OVERLAP_METERS:
         return "immediate_overlap"  # 0 - 50m
-    elif distance_meters <= 200.0:
+    elif distance_meters <= DEFAULT_STREET_COMPOUND_METERS:
         return "same_compound_or_street"  # 50 - 200m
-    elif distance_meters <= 500.0:
+    elif distance_meters <= DEFAULT_MAX_GEO_DISTANCE_METERS:
         return "nearby_cluster"  # 200 - 500m
-    elif distance_meters <= 1000.0:
+    elif distance_meters <= DEFAULT_NEIGHBORHOOD_METERS:
         return "neighborhood"  # 500 - 1000m
-    elif distance_meters <= 5000.0:
+    elif distance_meters <= DEFAULT_LOCALITY_METERS:
         return "same_locality"  # 1km - 5km
     else:
         return "distant"  # > 5km
@@ -142,7 +151,7 @@ class GeoDetector:
     and discovering geographic proximity clusters with multi-signal context.
     """
 
-    def __init__(self, default_max_distance_meters: float = 500.0):
+    def __init__(self, default_max_distance_meters: float = DEFAULT_MAX_GEO_DISTANCE_METERS):
         self.default_max_distance_meters = default_max_distance_meters
         self._duplicate_detector = DuplicateDetector()
 
@@ -278,7 +287,7 @@ class GeoDetector:
                         m = vec.fit_transform([norm_a, norm_b])
                         sim = float((m[0] * m[1].T).toarray()[0][0])
                         text_similarity = round(sim, 4)
-                        if text_similarity >= 0.75:
+                        if text_similarity >= DEFAULT_GEO_SIMILARITY_THRESHOLD:
                             reasons.append(
                                 f"High text similarity ({text_similarity:.2%}) combined with spatial proximity."
                             )
@@ -291,7 +300,14 @@ class GeoDetector:
 
         # Important principle check: Is this considered a potential duplicate?
         # Geographic proximity alone is NOT duplicate; requires text similarity or identical metadata
-        is_potential_duplicate = bool(text_similarity >= 0.85 or (text_similarity >= 0.70 and same_category and distance_meters < 50))
+        is_potential_duplicate = bool(
+            text_similarity >= DEFAULT_GEO_DUPLICATE_SIMILARITY_THRESHOLD
+            or (
+                text_similarity >= DEFAULT_GEO_DUPLICATE_CATEGORY_SIMILARITY_THRESHOLD
+                and same_category
+                and distance_meters < DEFAULT_GEO_DUPLICATE_MAX_DISTANCE_METERS
+            )
+        )
 
         return {
             "work_a_id": work_a.get("id"),

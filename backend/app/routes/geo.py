@@ -9,6 +9,7 @@ from app.schemas.geo import (
     SingleWorkNearbyResponse,
 )
 from app.services.duplicate import GeoService
+from ml.config import DEFAULT_MAX_GEO_DISTANCE_METERS
 
 router = APIRouter(prefix="/geo", tags=["Geographic Detection"])
 service = GeoService()
@@ -16,7 +17,7 @@ service = GeoService()
 
 @router.get("/proximity", response_model=GeoProximityScanResponse)
 def scan_geo_proximity(
-    max_distance_meters: float = Query(500.0, ge=1.0, le=50000.0, description="Maximum physical distance in meters"),
+    max_distance_meters: float = Query(DEFAULT_MAX_GEO_DISTANCE_METERS, ge=1.0, le=50000.0, description="Maximum physical distance in meters"),
     constituency: Optional[str] = Query(None, description="Filter works by constituency name"),
     state: Optional[str] = Query(None, description="Filter works by state name"),
     category: Optional[str] = Query(None, description="Filter works by category"),

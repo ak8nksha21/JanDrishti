@@ -5,6 +5,10 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.schemas.duplicate import DuplicateScanResponse, SingleWorkDuplicatesResponse
 from app.services.duplicate import DuplicateService
+from ml.config import (
+    DEFAULT_DUPLICATE_SIMILARITY_THRESHOLD,
+    DEFAULT_TARGET_SIMILARITY_THRESHOLD,
+)
 
 router = APIRouter(prefix="/duplicates", tags=["Duplicate Detection"])
 service = DuplicateService()
@@ -12,7 +16,7 @@ service = DuplicateService()
 
 @router.get("", response_model=DuplicateScanResponse)
 def scan_duplicates(
-    min_similarity: float = Query(0.85, ge=0.0, le=1.0, description="Minimum text similarity threshold (0.0 to 1.0)"),
+    min_similarity: float = Query(DEFAULT_DUPLICATE_SIMILARITY_THRESHOLD, ge=0.0, le=1.0, description="Minimum text similarity threshold (0.0 to 1.0)"),
     constituency: Optional[str] = Query(None, description="Filter works by constituency name"),
     state: Optional[str] = Query(None, description="Filter works by state name"),
     category: Optional[str] = Query(None, description="Filter works by category"),
@@ -38,7 +42,7 @@ def scan_duplicates(
 @router.get("/{work_id}", response_model=SingleWorkDuplicatesResponse)
 def get_duplicates_for_work(
     work_id: str,
-    min_similarity: float = Query(0.75, ge=0.0, le=1.0, description="Minimum text similarity threshold"),
+    min_similarity: float = Query(DEFAULT_TARGET_SIMILARITY_THRESHOLD, ge=0.0, le=1.0, description="Minimum text similarity threshold"),
     limit: int = Query(20, ge=1, le=100, description="Maximum candidate matches to return"),
     scope_to_state: bool = Query(False, description="Limit comparison candidates to the same state"),
     db: Session = Depends(get_db)

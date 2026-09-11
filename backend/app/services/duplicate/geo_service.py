@@ -5,6 +5,7 @@ from sqlalchemy import or_
 
 from app.models.work import Work
 from ml.geo_detection import GeoDetector, validate_coordinates
+from ml.config import DEFAULT_MAX_GEO_DISTANCE_METERS
 
 logger = logging.getLogger("jandrishti.geo.service")
 
@@ -21,7 +22,7 @@ class GeoService:
     def scan_proximity(
         self,
         db: Session,
-        max_distance_meters: float = 500.0,
+        max_distance_meters: float = DEFAULT_MAX_GEO_DISTANCE_METERS,
         constituency: Optional[str] = None,
         state: Optional[str] = None,
         category: Optional[str] = None,
@@ -56,14 +57,18 @@ class GeoService:
         )
 
         logger.info(
-            f"Scanning geo proximity for {total_scanned} works ({usable_count} usable coordinates, "
-            f"max_dist={max_distance_meters}m)"
+            f"Starting geo proximity scan: {total_scanned} works with coordinates ({usable_count} usable, "
+            f"max_dist={max_distance_meters}m, constituency='{constituency}', state='{state}')"
         )
 
         pairs = self.detector.find_geo_proximity_pairs(
             works=works,
             max_distance_meters=max_distance_meters,
             same_category_only=same_category_only
+        )
+
+        logger.info(
+            f"Completed geo proximity scan: found {len(pairs)} proximity pairs (returning top {len(pairs[:limit])})"
         )
 
         return {

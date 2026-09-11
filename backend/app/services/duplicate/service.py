@@ -5,6 +5,10 @@ from sqlalchemy import or_
 
 from app.models.work import Work
 from ml.duplicate_detection import DuplicateDetector
+from ml.config import (
+    DEFAULT_DUPLICATE_SIMILARITY_THRESHOLD,
+    DEFAULT_TARGET_SIMILARITY_THRESHOLD,
+)
 
 logger = logging.getLogger("jandrishti.duplicate.service")
 
@@ -24,13 +28,14 @@ class DuplicateService:
         constituency: Optional[str] = None,
         state: Optional[str] = None,
         category: Optional[str] = None,
-        min_similarity: float = 0.85,
+        min_similarity: float = DEFAULT_DUPLICATE_SIMILARITY_THRESHOLD,
         limit: int = 100,
         max_works: int = 2000
     ) -> Dict[str, Any]:
         """
         Scan database works for duplicate or overlapping projects.
         Applies optional filters (constituency, state, category).
+        Complexity: O(N) TF-IDF vectorization + O(N^2) pairwise similarity matrix computation.
         """
         query = db.query(Work)
 
@@ -51,13 +56,18 @@ class DuplicateService:
 
         total_works = len(works)
         logger.info(
-            f"Scanning {total_works} works for duplicates "
-            f"(constituency={constituency}, state={state}, threshold={min_similarity})"
+            f"Starting duplicate scan: {total_works} works (constituency='{constituency}', "
+            f"state='{state}', category='{category}', min_similarity={min_similarity})"
         )
 
         pairs = self.detector.find_duplicate_pairs(works, threshold=min_similarity)
         total_found = len(pairs)
         limited_pairs = pairs[:limit]
+
+        logger.info(
+            f"Completed duplicate scan: analyzed {total_works} works, identified {total_found} duplicate pairs "
+            f"(returning top {len(limited_pairs)})"
+        )
 
         return {
             "total_works_analyzed": total_works,
@@ -76,7 +86,7 @@ class DuplicateService:
         self,
         db: Session,
         work_id: str,
-        min_similarity: float = 0.75,
+        min_similarity: float = DEFAULT_TARGET_SIMILARITY_THRESHOLD,
         limit: int = 20,
         scope_to_state: bool = False
     ) -> Optional[Dict[str, Any]]:

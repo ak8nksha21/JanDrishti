@@ -17,6 +17,11 @@ import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
+from ml.config import (
+    DEFAULT_DUPLICATE_SIMILARITY_THRESHOLD,
+    DEFAULT_COST_SIMILARITY_RATIO_THRESHOLD,
+)
+
 
 def normalize_text(text: Optional[str]) -> str:
     """
@@ -61,7 +66,7 @@ class DuplicateDetector:
     Uses TF-IDF + Cosine Similarity with multi-signal context validation.
     """
 
-    def __init__(self, similarity_threshold: float = 0.85):
+    def __init__(self, similarity_threshold: float = DEFAULT_DUPLICATE_SIMILARITY_THRESHOLD):
         """
         Initialize the detector with a default similarity threshold.
         :param similarity_threshold: Minimum text cosine similarity (0.0 to 1.0) to flag as duplicate.
@@ -187,7 +192,7 @@ class DuplicateDetector:
                     cost_similarity_ratio = 1.0 - (cost_difference / max_cost)
                     if cost_difference == 0:
                         reasons.append(f"Identical recorded cost: ₹{c_a:,.2f}.")
-                    elif cost_similarity_ratio >= 0.95:
+                    elif cost_similarity_ratio >= DEFAULT_COST_SIMILARITY_RATIO_THRESHOLD:
                         reasons.append(
                             f"Very close recorded cost: ₹{c_a:,.2f} vs ₹{c_b:,.2f} (diff: ₹{cost_difference:,.2f})."
                         )
