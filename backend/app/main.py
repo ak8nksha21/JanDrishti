@@ -9,6 +9,7 @@ from app.routes.works import router as works_router
 from app.routes.mps import router as mps_router
 from app.routes.dashboard import router as dashboard_router
 from app.routes.sync import router as sync_router
+from app.routes.anomalies import router as anomalies_router
 from app.routes.risk import router as risk_router
 
 # Configure logging
@@ -54,6 +55,7 @@ app.include_router(works_router, prefix="/api")
 app.include_router(mps_router, prefix="/api")
 app.include_router(dashboard_router, prefix="/api")
 app.include_router(sync_router, prefix="/api")
+app.include_router(anomalies_router, prefix="/api")
 app.include_router(risk_router, prefix="/api")
 
 
