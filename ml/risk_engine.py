@@ -315,39 +315,47 @@ class RiskEngine:
 
     def compute_composite_score(
         self,
-        cost_score: float,
-        ml_score: float,
-        dup_score: float,
-        util_score: float = 0.0,
-        geo_score: float = 0.0,
-        dq_score: float = 0.0
+        cost_score: Optional[float] = None,
+        ml_score: Optional[float] = None,
+        dup_score: Optional[float] = None,
+        util_score: Optional[float] = None,
+        geo_score: Optional[float] = None,
+        dq_score: Optional[float] = None
     ) -> Dict[str, Any]:
         """Compute composite risk score, flags, and assigned tier for a work item."""
-        signals = {
-            "cost_anomaly_score": cost_score,
-            "ml_anomaly_score": ml_score,
-            "duplicate_score": dup_score,
-            "utilization_score": util_score,
-            "geographic_score": geo_score,
-            "data_quality_score": dq_score,
-        }
+        signals = {}
+        if cost_score is not None:
+            signals["cost_anomaly_score"] = cost_score
+        if ml_score is not None:
+            signals["ml_anomaly_score"] = ml_score
+        if dup_score is not None:
+            signals["duplicate_score"] = dup_score
+        if util_score is not None:
+            signals["utilization_score"] = util_score
+        if geo_score is not None:
+            signals["geographic_score"] = geo_score
+        if dq_score is not None:
+            signals["data_quality_score"] = dq_score
+
         res = self.compute_risk(signals)
         overall = res.get("overall_score") or 0.0
         level = res.get("risk_level") or "Low"
 
         flags = []
-        if cost_score >= 60.0:
+        if cost_score is not None and cost_score >= 60.0:
             flags.append("Cost Anomaly")
-        if dup_score >= 60.0:
+        if dup_score is not None and dup_score >= 60.0:
             flags.append("Duplicate Suspect")
-        if ml_score >= 65.0:
+        if ml_score is not None and ml_score >= 65.0:
             flags.append("Multivariate Outlier")
-        if util_score >= 60.0:
+        if util_score is not None and util_score >= 60.0:
             flags.append("Utilization Risk")
-        if geo_score >= 60.0:
+        if geo_score is not None and geo_score >= 60.0:
             flags.append("Geographic Proximity")
-        if dq_score >= 65.0:
+        if dq_score is not None and dq_score >= 65.0:
             flags.append("Data Incomplete")
+
+        peak = max([s for s in [cost_score, ml_score, dup_score, util_score, geo_score, dq_score] if s is not None] or [0.0])
 
         return {
             "overall_score": overall,
@@ -355,7 +363,7 @@ class RiskEngine:
             "flags": flags,
             "observations": res.get("observations", []),
             "weighted_base": overall,
-            "peak_component": max(cost_score, ml_score, dup_score, util_score, geo_score, dq_score)
+            "peak_component": peak
         }
 
     @staticmethod
