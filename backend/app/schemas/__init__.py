@@ -12,7 +12,7 @@ from app.schemas.risk import (
     RiskAlertDetail,
     RiskAlertsListResponse,
     RiskEngineConfigResponse,
-    EvidenceItem,
+    EvidenceItem as RiskEvidenceItem,
 )
 from app.schemas.duplicate import (
     DuplicatePairResponse,
@@ -33,6 +33,12 @@ from app.schemas.data_quality import (
     DataQualitySummaryResponse,
     DataQualityBatchResponse,
 )
+from app.schemas.investigation import (
+    InvestigationResponse,
+    SignalBreakdown,
+    EvidenceItem,
+    ToolResult,
+)
 
 __all__ = [
     "WorkResponse",
@@ -50,7 +56,7 @@ __all__ = [
     "RiskAlertDetail",
     "RiskAlertsListResponse",
     "RiskEngineConfigResponse",
-    "EvidenceItem",
+    "RiskEvidenceItem",
 
     # Duplicate detection schemas
     "DuplicatePairResponse",
@@ -70,4 +76,10 @@ __all__ = [
     "WorkQualityReportResponse",
     "DataQualitySummaryResponse",
     "DataQualityBatchResponse",
+
+    # Investigation schemas
+    "InvestigationResponse",
+    "SignalBreakdown",
+    "EvidenceItem",
+    "ToolResult",
 ]
