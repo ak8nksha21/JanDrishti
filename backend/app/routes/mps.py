@@ -1,6 +1,6 @@
 import math
 from typing import Optional
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -48,3 +48,31 @@ def get_mps(
         "limit": limit,
         "total_pages": total_pages
     }
+
+
+@router.get("/{mp_id}", response_model=MPFinancialSummaryResponse)
+def get_mp_by_id(
+    mp_id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Retrieve financial and performance summary metrics for a single MP by their
+    internal database ID or external source_id.
+    """
+    mp = None
+
+    if mp_id.isdigit():
+        numeric_id = int(mp_id)
+        mp = db.query(MPFinancialSummary).filter(MPFinancialSummary.id == numeric_id).first()
+
+    if not mp:
+        mp = db.query(MPFinancialSummary).filter(MPFinancialSummary.source_id == mp_id).first()
+
+    if not mp:
+        raise HTTPException(
+            status_code=404,
+            detail=f"MP summary record with identifier '{mp_id}' was not found in the database."
+        )
+
+    return mp
+

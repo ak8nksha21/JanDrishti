@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 from typing import Dict, Any, Optional, List
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_
@@ -220,3 +221,77 @@ class IngestionService:
         finally:
             if self._external_db is None:
                 db.close()
+
+    def sync_all(self, constituency: Optional[str] = "SHAHJAHANPUR") -> Dict[str, Any]:
+        """
+        Execute full synchronization across all configured external sources:
+        1. MoSPI macro metrics
+        2. Empowered Indian MP summaries
+        3. Empowered Indian completed works
+
+        Guarantees that partial failures in one source do not wipe or corrupt
+        other sources or existing database data.
+        """
+        target_constituency = constituency or "SHAHJAHANPUR"
+        results: Dict[str, Any] = {
+            "status": "success",
+            "message": "Data synchronization completed successfully",
+            "timestamp": datetime.utcnow().isoformat(),
+            "summary": {},
+            "errors": []
+        }
+
+        # 1. MoSPI Macro Metrics
+        try:
+            mospi_res = self.ingest_mospi_macro_data()
+            results["summary"]["macro_metrics"] = {
+                "total_metrics": mospi_res.get("total_metrics", 0),
+                "inserted": mospi_res.get("inserted", 0),
+                "updated": mospi_res.get("updated", 0)
+            }
+        except Exception as e:
+            err_msg = f"MoSPI macro metrics sync failed: {str(e)}"
+            logger.error(err_msg)
+            results["errors"].append(err_msg)
+            results["summary"]["macro_metrics"] = {"error": str(e), "inserted": 0, "updated": 0}
+
+        # 2. MP Financial Summaries
+        try:
+            mps_res = self.ingest_mp_summaries()
+            results["summary"]["mp_summaries"] = {
+                "fetched": mps_res.get("total_fetched", 0),
+                "inserted": mps_res.get("inserted", 0),
+                "updated": mps_res.get("updated", 0),
+                "errors": mps_res.get("errors", 0)
+            }
+        except Exception as e:
+            err_msg = f"MP summaries sync failed: {str(e)}"
+            logger.error(err_msg)
+            results["errors"].append(err_msg)
+            results["summary"]["mp_summaries"] = {"error": str(e), "inserted": 0, "updated": 0}
+
+        # 3. Completed Works
+        try:
+            works_res = self.ingest_completed_works(constituency=target_constituency)
+            results["summary"]["works"] = {
+                "constituency": target_constituency,
+                "fetched": works_res.get("total_fetched", 0),
+                "inserted": works_res.get("inserted", 0),
+                "updated": works_res.get("updated", 0),
+                "errors": works_res.get("errors", 0)
+            }
+        except Exception as e:
+            err_msg = f"Works sync failed ({target_constituency}): {str(e)}"
+            logger.error(err_msg)
+            results["errors"].append(err_msg)
+            results["summary"]["works"] = {"constituency": target_constituency, "error": str(e), "inserted": 0, "updated": 0}
+
+        if len(results["errors"]) == 3:
+            results["status"] = "failed"
+            results["message"] = "All data source synchronization tasks failed"
+        elif len(results["errors"]) > 0:
+            results["status"] = "partial_success"
+            results["message"] = "Data synchronization completed with partial warnings/errors"
+
+        return results
+
