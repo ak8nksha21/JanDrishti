@@ -9,6 +9,9 @@ from app.routes.works import router as works_router
 from app.routes.mps import router as mps_router
 from app.routes.dashboard import router as dashboard_router
 from app.routes.sync import router as sync_router
+from app.routes.duplicates import router as duplicates_router
+from app.routes.geo import router as geo_router
+from app.routes.data_quality import router as data_quality_router
 
 # Configure logging
 logging.basicConfig(
@@ -53,6 +56,9 @@ app.include_router(works_router, prefix="/api")
 app.include_router(mps_router, prefix="/api")
 app.include_router(dashboard_router, prefix="/api")
 app.include_router(sync_router, prefix="/api")
+app.include_router(duplicates_router, prefix="/api")
+app.include_router(geo_router, prefix="/api")
+app.include_router(data_quality_router, prefix="/api")
 
 
 @app.get("/")
