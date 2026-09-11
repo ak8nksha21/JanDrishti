@@ -1,19 +1,19 @@
-# JanDrishti Top Navigation Layout & UI Architecture Walkthrough
+# JanDrishti - Merged Implementation & Architecture Walkthrough
 
-This document summarizes the transition from a left-side navigation layout to a **modern, full-width Top Navigation Header** on branch `feature/frontend-dashboard`.
+This document summarizes the full integration on branch `feature/frontend-dashboard` combining the frontend dashboard UI architecture and the backend ML risk engine services.
 
 ---
 
-## 1. Top Navigation Layout Architecture
+## 1. Frontend UI & Layout Architecture
 
-The platform navigation has been shifted to the top of the viewport via `frontend/src/components/layout/TopNavbar.jsx`:
+The platform features a modern, monochromatic Brown & White aesthetic with a full-width centered top navigation header:
 
 ```mermaid
 flowchart TD
     subgraph TopNavbarHeader ["Top Navigation Header (frontend/src/components/layout/TopNavbar.jsx)"]
-        Brand["Brand: Shield Logo + JAN DRISHTI + v0.2 Badge"]
+        Brand["Brand: Emblem Logo + JAN DRISHTI + v0.2 Badge"]
         NavLinks["Links: Overview | Works Explorer | MP Performance | Analytics | Data Sources | System Status"]
-        Actions["Actions: Search (Cmd+K) | Live PostgreSQL Telemetry (18ms) | Sync Data Button | Mobile Drawer"]
+        Actions["Actions: Search (Cmd+K) | Live PostgreSQL Telemetry | Sync Data Button | Mobile Drawer"]
     end
 
     subgraph ContentArea ["Full-Width Main Container"]
@@ -24,28 +24,65 @@ flowchart TD
     TopNavbarHeader --> ContentArea
 ```
 
----
-
-## 2. Key Changes Implemented
-
-1. **Top Navigation Header** (`frontend/src/components/layout/TopNavbar.jsx`):
-   - **Left**: Saffron shield logo with `JAN` + `DRISHTI` branding and `v0.2` tag.
-   - **Center (Desktop)**: Primary links with active pill indicators, icons, and live status badges (`Overview`, `Works Explorer`, `MP Performance`, `Analytics`, `Data Sources`, `System Status`).
-   - **Right**: Global search modal trigger (`⌘K`), live PostgreSQL probe latency badge (`18ms`), animated Data Sync button, and mobile hamburger drawer.
-
-2. **Full-Width Main Container** (`frontend/src/App.jsx`):
-   - Removed the fixed left `Sidebar` and `lg:pl-64` margin offset.
-   - Expanded the main content layout across the full viewport width with responsive centering (`max-w-7xl mx-auto`).
-
-3. **Responsive Mobile Menu Drawer**:
-   - Integrated mobile slide-down menu with touch-friendly tap targets and active route highlights.
+### Visual & Design System Guidelines:
+- **Palette**: Monochromatic Brown & Warm Cream/White
+  - Primary Background: `#FAF7F2` / `#FFFFFF`
+  - Deep Brown Accents: `#44312A` / `#504F47`
+  - Warm Borders & Muted Backgrounds: `#E7DDCA` / `#D8CBB6`
+- **Civic Terms Compliance**: Strict non-accusatory terminology (`Flagged Risk`, `Anomalous Cost`, `Needs Review`) with 0 occurrences of forbidden terms like `fraud` or `scam`.
+- **Null Safety**: All missing metrics strictly display `"N/A"`, preventing default zero representation.
 
 ---
 
-## 3. Verification
+## 2. Canonical ML Risk Engine & Anomaly Detection
+
+Unified multi-signal risk scoring and anomaly detection subsystems:
+
+```
+MPLADS Data (Works DB) ──┐
+                         ▼
+             Normalized Signals (0–100)
+    ┌────────────────────┬────────────────────┐
+    │ ml_anomaly: 25%    │ cost_anomaly: 25%  │
+    │ duplicate: 20%     │ utilization: 15%   │
+    │ geographic: 10%    │ data_quality: 5%   │
+    └────────────────────┴────────────────────┘
+                         │
+                         ▼
+        [ml/risk_engine.py] (RiskEngine)
+    • Dynamic weight renormalization for missing signals
+    • Deterministic 0–100 score + safe observations
+    • Top risk factor ranking
+                         │
+         ┌───────────────┴───────────────┐
+         ▼                               ▼
+ [Investigation Agent]          [backend/app/services/risk/service.py] (RiskService)
+  Tool 8: get_risk_breakdown                     │
+                                                 ▼
+                                     [backend/app/routes/risk.py]
+                                     • POST /api/risk/evaluate
+                                     • POST /api/risk/evaluate/batch
+                                     • GET  /api/risk/alerts
+                                     • GET  /api/risk/config
+                                     • GET  /api/risk/{work_id}
+```
+
+### Key Subsystems:
+1. **Cost Anomaly Detection** (`ml/anomaly_detection.py`):
+   - Work-level hierarchical peer IQR + Isolation Forest.
+   - Preserves `.analyze()` helper for full pipeline batch execution.
+2. **Multivariable Financial Anomaly Detection** (`ml/anomaly_detection.py`):
+   - Combines work cost, MP allocation, expenditure, and payment gaps.
+3. **Canonical Risk Engine** (`ml/risk_engine.py`):
+   - Deterministic 0–100 scale, weight renormalization for missing signals, and non-accusatory observation generators.
+
+---
+
+## 3. Verification & Build Results
 
 | Check | Result | Details |
 | :--- | :---: | :--- |
-| **Vite Production Build** | `PASS` | `npm run build` compiled in ~248ms with zero errors. |
-| **Navigation Routing** | `PASS` | All links and active tab indicators functional across routes. |
-| **Responsive Viewport** | `PASS` | Desktop horizontal header and mobile collapsible drawer verified. |
+| **Vite Production Build** | `PASS` | `npm run build` compiled cleanly with 0 errors. |
+| **Merge Resolution** | `PASS` | All merge conflicts between `origin/main` and `feature/frontend-dashboard` resolved. |
+| **Non-Accusatory Scanning** | `PASS` | 0 occurrences of forbidden terminology across frontend UI. |
+| **Map & Table Filters** | `PASS` | Missing GPS coordinates safely filtered without canvas errors; pagination operational. |

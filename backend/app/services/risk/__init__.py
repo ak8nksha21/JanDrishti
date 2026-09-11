@@ -1,5 +1,45 @@
-"""Risk Scoring & Aggregation Services"""
-from app.services.risk.service import run_full_risk_pipeline, get_work_id_str
+"""JanDrishti Risk Scoring & Aggregation Services"""
+from ml.risk_engine import (
+    RiskEngine as MLRiskEngine,
+    DEFAULT_SIGNAL_WEIGHTS,
+    BAND_LOW_MAX,
+    BAND_MEDIUM_MAX,
+    BAND_HIGH_MAX,
+    ALERT_SCORE_THRESHOLD,
+)
+from app.services.risk.service import (
+    RiskService,
+    risk_service,
+    run_full_risk_pipeline,
+    get_work_id_str,
+    calculate_geographic_scores,
+    calculate_utilization_scores,
+)
+from app.services.risk.engine import RiskEngine, risk_engine
+from app.services.risk.scoring import RiskScorer, ScoringResult, ContributingSignal
+from app.services.risk.reasons import RiskReasonGenerator
+from app.services.risk.alerts import RiskAlert, AlertManager, alert_manager
 
-__all__ = ["run_full_risk_pipeline", "get_work_id_str"]
-
+__all__ = [
+    "MLRiskEngine",
+    "RiskEngine",
+    "risk_engine",
+    "RiskService",
+    "risk_service",
+    "run_full_risk_pipeline",
+    "get_work_id_str",
+    "calculate_geographic_scores",
+    "calculate_utilization_scores",
+    "RiskScorer",
+    "ScoringResult",
+    "ContributingSignal",
+    "RiskReasonGenerator",
+    "RiskAlert",
+    "AlertManager",
+    "alert_manager",
+    "DEFAULT_SIGNAL_WEIGHTS",
+    "BAND_LOW_MAX",
+    "BAND_MEDIUM_MAX",
+    "BAND_HIGH_MAX",
+    "ALERT_SCORE_THRESHOLD",
+]

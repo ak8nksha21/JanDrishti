@@ -9,4 +9,3 @@ repo_root = os.path.abspath(os.path.join(backend_root, ".."))
 for path in [repo_root, backend_root]:
     if path not in sys.path:
         sys.path.insert(0, path)
-
