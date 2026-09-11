@@ -33,6 +33,8 @@ def main():
     parser.add_argument("--max-pages", type=int, default=None, help="Cap maximum pages to fetch (default: None for all matching pages)")
     parser.add_argument("--mps", action="store_true", help="Ingest MP financial & execution summaries")
     parser.add_argument("--mospi", action="store_true", help="Ingest MoSPI eSAKSHI macro dashboard tiles")
+    parser.add_argument("--csv", type=str, default=None, help="Ingest national work items from local CSV (e.g. data/MPLADS.csv)")
+    parser.add_argument("--score-risks", action="store_true", help="Execute full anomaly detection and composite risk scoring pipeline")
     parser.add_argument("--init-db", action="store_true", help="Initialize database tables if they do not exist")
 
     args = parser.parse_args()
@@ -43,9 +45,35 @@ def main():
 
     service = IngestionService()
 
+    if args.score_risks:
+        from app.database import SessionLocal
+        from app.services.risk.service import run_full_risk_pipeline
+        db = SessionLocal()
+        try:
+            logger.info("Running complete risk scoring pipeline...")
+            res = run_full_risk_pipeline(db)
+            logger.info(f"Risk Scoring Results: {res}")
+        finally:
+            db.close()
+        return
+
+    if args.csv:
+        from app.database import SessionLocal
+        from app.routes.dataset import load_csv_dataset
+        db = SessionLocal()
+        try:
+            logger.info(f"Loading records from CSV: {args.csv}...")
+            max_rec = args.max_pages * 100 if args.max_pages else 500
+            res = load_csv_dataset(max_records=max_rec, constituency=args.constituency, db=db)
+            logger.info(f"CSV Ingestion & Risk Scoring Results: {res}")
+        finally:
+            db.close()
+        return
+
     if args.init_db and not (args.all or args.all_works or args.constituency or args.state or args.mps or args.mospi):
         logger.info("Database schema initialized successfully.")
         return
+
 
     if args.all:
         logger.info("=== Running Full Ingestion Pipeline ===")

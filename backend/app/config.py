@@ -1,7 +1,10 @@
+from typing import Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    DATABASE_URL: Optional[str] = None
+
     POSTGRES_DB: str = "jandrishti"
     POSTGRES_USER: str = "postgres"
     POSTGRES_PASSWORD: str = "postgres"
@@ -13,6 +16,8 @@ class Settings(BaseSettings):
 
     @property
     def database_url(self) -> str:
+        if self.DATABASE_URL:
+            return self.DATABASE_URL
         return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
 
     model_config = SettingsConfigDict(
@@ -23,3 +28,4 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
