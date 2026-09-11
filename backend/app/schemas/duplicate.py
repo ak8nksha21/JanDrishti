@@ -19,6 +19,7 @@ class DuplicatePairResponse(BaseModel):
     work_b_cost: Optional[float] = None
 
     text_similarity: float = Field(..., description="Cosine similarity score (0.0 to 1.0) on normalized descriptions")
+    duplicate_score: int = Field(..., description="Normalized similarity score 0‑100 for downstream agents")
     match_type: str = Field(..., description="Classification of the match pattern")
     is_exact_text: bool = Field(..., description="True if normalized descriptions are identical")
     

@@ -246,6 +246,7 @@ class DuplicateDetector:
             "work_b_location": work_b.get("location"),
             "work_b_cost": work_b.get("cost"),
             "text_similarity": round(float(text_similarity), 4),
+            "duplicate_score": int(round(float(text_similarity) * 100)),
             "match_type": match_type,
             "is_exact_text": is_exact_text,
             "same_constituency": same_constituency,

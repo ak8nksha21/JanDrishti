@@ -78,6 +78,7 @@ class TestDuplicateDetectionML(unittest.TestCase):
         pair = pairs[0]
         self.assertEqual(pair["is_exact_text"], True)
         self.assertGreaterEqual(pair["text_similarity"], 0.99)
+        self.assertGreaterEqual(pair["duplicate_score"], 99)
         self.assertEqual(pair["same_constituency"], True)
         self.assertEqual(pair["same_location"], True)
         self.assertEqual(pair["cost_difference"], 0.0)
