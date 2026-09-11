@@ -1,240 +1,166 @@
-import React, { useState, useEffect } from 'react';
-import Navbar from './components/Navbar';
-import KPICards from './components/KPICards';
-import ChartsSection from './components/ChartsSection';
-import RiskTable from './components/RiskTable';
-import GeoRiskMap from './components/GeoRiskMap';
-import WorkDetailModal from './components/WorkDetailModal';
-import InvestigationModal from './components/InvestigationModal';
-import AlertsView from './components/AlertsView';
-import AuditLogsView from './components/AuditLogsView';
-import AgencyBenchmarks from './components/AgencyBenchmarks';
-import { fetchRiskSummary, fetchRiskWorks, fetchAlerts, triggerSync, triggerLiveSync, triggerCsvLoad, updateAlertStatus } from './api/client';
-import { Shield, Sparkles, RefreshCw, AlertTriangle, Globe } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { RouterProvider, useRouter } from './router/Router';
+import TopNavbar from './components/layout/TopNavbar';
+import Footer from './components/layout/Footer';
+import GlobalSearchModal from './components/layout/GlobalSearchModal';
+import SyncModal from './components/layout/SyncModal';
 
-export default function App() {
-  const [activeTab, setActiveTab] = useState('overview');
-  const [userRole, setUserRole] = useState('CENTRAL_OFFICER');
+// Pages
+import Dashboard from './pages/Dashboard';
+import Works from './pages/Works';
+import WorkDetails from './pages/WorkDetails';
+import MPs from './pages/MPs';
+import MPDetails from './pages/MPDetails';
+import Analytics from './pages/Analytics';
+import DataSources from './pages/DataSources';
+import SystemStatus from './pages/SystemStatus';
 
-  const [summary, setSummary] = useState(null);
-  const [works, setWorks] = useState([]);
-  const [alerts, setAlerts] = useState([]);
+import { checkHealth } from './services/status';
 
-  const [selectedWorkId, setSelectedWorkId] = useState(null);
-  const [investigatingWorkId, setInvestigatingWorkId] = useState(null);
-  const [loading, setLoading] = useState(true);
+function AppContent() {
+  const { path, navigate } = useRouter();
+
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isSyncOpen, setIsSyncOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+
+  const [apiStatus, setApiStatus] = useState({ isOnline: true, latencyMs: 18 });
+  const [lastSyncTime, setLastSyncTime] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
 
-  const showToast = (msg) => {
-    setToastMessage(msg);
+  const showToast = (message) => {
+    setToastMessage(message);
     setTimeout(() => setToastMessage(null), 4500);
   };
 
-  const loadData = async () => {
+  // Health probe on load
+  const probeHealth = useCallback(async () => {
     try {
-      setLoading(true);
-      const [sumData, worksData, alertsData] = await Promise.all([
-        fetchRiskSummary(),
-        fetchRiskWorks({ limit: 100 }),
-        fetchAlerts()
-      ]);
-      setSummary(sumData);
-      setWorks(worksData.items || worksData || []);
-      setAlerts(alertsData || []);
-    } catch (err) {
-      console.error('Error fetching data:', err);
-    } finally {
-      setLoading(false);
+      const res = await checkHealth();
+      setApiStatus(res);
+    } catch (e) {
+      setApiStatus({ isOnline: false, latencyMs: 0 });
     }
-  };
-
-  useEffect(() => {
-    loadData();
   }, []);
 
-  const handleSync = async () => {
-    setIsSyncing(true);
-    try {
-      const res = await triggerSync();
-      await loadData();
-      showToast(`Pipeline re-run complete! Active works updated.`);
-    } catch (err) {
-      console.error(err);
-      showToast('Sync failed. Check backend connection.');
-    } finally {
-      setIsSyncing(false);
-    }
+  useEffect(() => {
+    probeHealth();
+    const interval = setInterval(probeHealth, 30000); // 30s probe
+    return () => clearInterval(interval);
+  }, [probeHealth]);
+
+  // Global keyboard listener for search (Cmd+K / Ctrl+K)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsSearchOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const handleSyncComplete = (result) => {
+    setLastSyncTime(new Date().toISOString());
+    showToast('MPLADS data feeds successfully synchronized with PostgreSQL records!');
+    probeHealth();
   };
 
-  const handleLiveSync = async (constituency) => {
-    setIsSyncing(true);
-    try {
-      // Normalize colloquial raebarelli
-      let target = constituency || 'RAE BARELI';
-      if (target.toLowerCase().includes('raebar')) {
-        target = 'RAE BARELI';
-      }
-      const res = await triggerLiveSync(target);
-      await loadData();
-      showToast(`Live sync completed for ${target}!`);
-    } catch (err) {
-      console.error(err);
-      // Try CSV fallback load if live API network is unavailable
-      try {
-        const csvRes = await triggerCsvLoad(150, constituency);
-        await loadData();
-        showToast(`Loaded ${csvRes.inserted_records || 100} records from national dataset.`);
-      } catch (e) {
-        showToast('Sync error. Verify network connectivity.');
-      }
-    } finally {
-      setIsSyncing(false);
+  // Route View Resolver
+  const renderCurrentView = () => {
+    if (path === '/') {
+      return <Dashboard onOpenSync={() => setIsSyncOpen(true)} />;
     }
-  };
+    if (path === '/works' || path === '/works-list') {
+      return <Works />;
+    }
+    if (path.startsWith('/works/')) {
+      const workId = path.split('/')[2];
+      return <WorkDetails workId={workId} />;
+    }
+    if (path === '/mps' || path === '/mps-list') {
+      return <MPs />;
+    }
+    if (path.startsWith('/mps/')) {
+      const mpId = path.split('/')[2];
+      return <MPDetails mpId={mpId} />;
+    }
+    if (path === '/analytics') {
+      return <Analytics />;
+    }
+    if (path === '/data-sources') {
+      return <DataSources onOpenSync={() => setIsSyncOpen(true)} />;
+    }
+    if (path === '/status') {
+      return <SystemStatus />;
+    }
 
-  const handleStatusUpdateFromAgent = async (workId, status) => {
-    const alert = alerts.find(a => a.work_id === workId);
-    if (alert) {
-      try {
-        await updateAlertStatus(alert.id, {
-          status: status,
-          reviewed_by: userRole,
-          notes: 'Marked under review following AI investigation agent briefing.'
-        });
-        loadData();
-        showToast(`Alert for #${workId} updated to "${status}"`);
-      } catch (err) {
-        console.error(err);
-      }
-    }
+    // 404 Fallback
+    return (
+      <div className="py-24 text-center space-y-4 max-w-lg mx-auto">
+        <h2 className="text-3xl font-black text-[#44312A] font-display">404 — Page Not Found</h2>
+        <p className="text-sm text-[#504F47]">
+          The requested intelligence route <code className="text-[#44312A] bg-white px-1.5 py-0.5 rounded border border-[#D8CBB6] font-mono">{path}</code> does not exist in the platform.
+        </p>
+        <button
+          onClick={() => navigate('/')}
+          className="px-5 py-2.5 rounded-xl bg-[#44312A] hover:bg-[#34241E] text-white font-bold text-xs shadow-md shadow-[#44312A]/20 transition cursor-pointer"
+        >
+          Return to Overview
+        </button>
+      </div>
+    );
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col selection:bg-blue-100 selection:text-blue-900">
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl border border-slate-700 flex items-center space-x-2 text-xs animate-in fade-in slide-in-from-bottom-3 duration-200">
-          <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span className="font-medium">{toastMessage}</span>
-        </div>
-      )}
-
-      {/* Main Navbar */}
-      <Navbar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        userRole={userRole}
-        setUserRole={setUserRole}
-        onSync={handleSync}
-        onLiveSync={handleLiveSync}
+    <div className="min-h-screen bg-[#E7DDCA] text-[#44312A] flex flex-col antialiased selection:bg-[#44312A] selection:text-[#E7DDCA]">
+      {/* 1. Top Navbar (Full Width Across Top of Screen) */}
+      <TopNavbar
+        onOpenSearch={() => setIsSearchOpen(true)}
+        onOpenSync={() => setIsSyncOpen(true)}
         isSyncing={isSyncing}
+        apiStatus={apiStatus}
+        lastSyncTime={lastSyncTime}
       />
 
-      {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full space-y-6">
-        {loading && !summary ? (
-          <div className="py-32 flex flex-col items-center justify-center space-y-3">
-            <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
-            <p className="text-slate-500 font-medium text-xs">
-              Initializing JanDrishti Risk Engine and loading datasets...
-            </p>
-          </div>
-        ) : (
-          <>
-            {/* KPI Cards always visible at top */}
-            <KPICards summary={summary} />
+      {/* 2. Main Full-Width Content Container */}
+      <div className="flex flex-col flex-1 min-h-screen w-full">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+          {renderCurrentView()}
+        </main>
 
-            {/* Tab Views */}
-            {activeTab === 'overview' && (
-              <div className="space-y-6">
-                <ChartsSection summary={summary} />
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-bold text-slate-800 text-sm">Recent Risk Priorities</h3>
-                    <button
-                      onClick={() => setActiveTab('risk')}
-                      className="text-xs text-blue-600 hover:text-blue-800 font-semibold cursor-pointer"
-                    >
-                      View All Works &rarr;
-                    </button>
-                  </div>
-                  <RiskTable
-                    works={works.slice(0, 10)}
-                    onSelectWork={setSelectedWorkId}
-                    onInvestigate={setInvestigatingWorkId}
-                  />
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'risk' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-base font-bold text-slate-900">Comprehensive Risk Registry</h2>
-                    <p className="text-xs text-slate-500">
-                      Sort and filter works by risk severity, cost, category, and detection flags
-                    </p>
-                  </div>
-                </div>
-                <RiskTable
-                  works={works}
-                  onSelectWork={setSelectedWorkId}
-                  onInvestigate={setInvestigatingWorkId}
-                />
-              </div>
-            )}
-
-            {activeTab === 'agency' && (
-              <AgencyBenchmarks onSyncSuccess={loadData} />
-            )}
-
-            {activeTab === 'map' && (
-              <GeoRiskMap
-                works={works}
-                onInvestigate={setInvestigatingWorkId}
-              />
-            )}
-
-            {activeTab === 'alerts' && (
-              <AlertsView
-                alerts={alerts}
-                onInvestigate={setInvestigatingWorkId}
-                onRefresh={loadData}
-              />
-            )}
-
-            {activeTab === 'audit' && (
-              <AuditLogsView />
-            )}
-          </>
-        )}
-      </main>
-
-      {/* Footer */}
-      <footer className="bg-white border-t border-slate-200 py-4 mt-8 text-center text-xs text-slate-400">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>Ministry of Statistics and Programme Implementation (MoSPI) • Decision Support System</span>
-          <span className="font-mono text-[11px] text-slate-500">JanDrishti • FastAPI • Scikit-Learn • React • Leaflet</span>
-        </div>
-      </footer>
+        {/* Global Footer */}
+        <Footer />
+      </div>
 
       {/* Modals */}
-      <WorkDetailModal
-        workId={selectedWorkId}
-        onClose={() => setSelectedWorkId(null)}
-        onInvestigate={(id) => {
-          setSelectedWorkId(null);
-          setInvestigatingWorkId(id);
-        }}
+      <GlobalSearchModal
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
       />
 
-      <InvestigationModal
-        workId={investigatingWorkId}
-        onClose={() => setInvestigatingWorkId(null)}
-        onUpdateStatus={handleStatusUpdateFromAgent}
+      <SyncModal
+        isOpen={isSyncOpen}
+        onClose={() => setIsSyncOpen(false)}
+        onSyncComplete={handleSyncComplete}
       />
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 p-4 rounded-2xl bg-[#44312A] border border-[#504F47] shadow-2xl text-xs font-semibold text-[#E7DDCA] flex items-center gap-3 backdrop-blur-md animate-in fade-in slide-in-from-bottom-3 duration-300">
+          <span className="h-2 w-2 rounded-full bg-[#E7DDCA] animate-ping" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <RouterProvider>
+      <AppContent />
+    </RouterProvider>
   );
 }

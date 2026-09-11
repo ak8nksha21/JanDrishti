@@ -28,31 +28,31 @@ export default function AlertsView({ alerts, onInvestigate, onRefresh }) {
 
   const getSeverityBadge = (sev) => {
     if (sev === 'Critical') {
-      return <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">CRITICAL</span>;
+      return <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#44312A] text-[#E7DDCA] border border-[#504F47]">CRITICAL</span>;
     }
-    return <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-orange-100 text-orange-800 border border-orange-200">HIGH</span>;
+    return <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#504F47] text-[#E7DDCA] border border-[#504F47]">HIGH</span>;
   };
 
   return (
     <div className="space-y-4 text-xs">
       {/* Workflow Tabs Header */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div className="bg-white p-4 rounded-xl border border-[#D8CBB6] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
-          <h3 className="font-semibold text-slate-800 text-sm">Alerts Lifecycle Management</h3>
-          <p className="text-slate-400 text-[11px]">
+          <h3 className="font-semibold text-[#44312A] text-sm">Alerts Lifecycle Management</h3>
+          <p className="text-[#504F47] text-[11px]">
             Statutory review workflow: New &rarr; Under Review &rarr; Verified / Dismissed &rarr; Resolved
           </p>
         </div>
 
-        <div className="flex items-center space-x-1 bg-slate-100 p-1 rounded-lg">
+        <div className="flex items-center space-x-1 bg-[#FAF7F2] p-1 rounded-lg border border-[#D8CBB6]">
           {statuses.map((st) => (
             <button
               key={st}
               onClick={() => setSelectedStatus(st)}
               className={`px-3 py-1.5 rounded-md font-medium text-xs transition ${
                 selectedStatus === st
-                  ? 'bg-white text-slate-900 shadow-xs font-semibold'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-[#44312A] text-[#E7DDCA] shadow-xs font-semibold'
+                  : 'text-[#504F47] hover:text-[#44312A]'
               }`}
             >
               {st} {st !== 'All' && `(${alerts.filter(a => a.status === st).length})`}
@@ -64,58 +64,58 @@ export default function AlertsView({ alerts, onInvestigate, onRefresh }) {
       {/* Alerts Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {filtered.length === 0 ? (
-          <div className="col-span-2 py-16 text-center text-slate-400 bg-white rounded-xl border border-slate-200">
+          <div className="col-span-2 py-16 text-center text-[#8C7769] bg-white rounded-xl border border-[#D8CBB6]">
             No alerts currently in "{selectedStatus}" status.
           </div>
         ) : (
           filtered.map((alert) => (
             <div
               key={alert.id}
-              className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs hover:border-slate-300 transition flex flex-col justify-between space-y-4"
+              className="bg-white p-5 rounded-xl border border-[#D8CBB6] shadow-xs hover:border-[#44312A] transition flex flex-col justify-between space-y-4"
             >
               <div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
-                    <span className="font-mono text-xs font-bold text-blue-700">{alert.work_id}</span>
+                    <span className="font-mono text-xs font-bold text-[#44312A]">{alert.work_id}</span>
                     {getSeverityBadge(alert.severity)}
                   </div>
                   <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
-                    alert.status === 'New' ? 'bg-blue-100 text-blue-800' :
-                    alert.status === 'Under Review' ? 'bg-amber-100 text-amber-800' :
-                    alert.status === 'Verified' ? 'bg-rose-100 text-rose-800' :
-                    alert.status === 'Resolved' ? 'bg-emerald-100 text-emerald-800' :
-                    'bg-slate-100 text-slate-700'
+                    alert.status === 'New' ? 'bg-[#FAF7F2] text-[#44312A] border border-[#D8CBB6]' :
+                    alert.status === 'Under Review' ? 'bg-[#FAF7F2] text-[#504F47] border border-[#D8CBB6]' :
+                    alert.status === 'Verified' ? 'bg-[#44312A] text-[#E7DDCA] border border-[#504F47]' :
+                    alert.status === 'Resolved' ? 'bg-[#504F47] text-[#E7DDCA] border border-[#504F47]' :
+                    'bg-[#FAF7F2] text-[#504F47] border border-[#D8CBB6]'
                   }`}>
                     {alert.status}
                   </span>
                 </div>
 
-                <h4 className="font-semibold text-slate-900 mt-2 text-sm line-clamp-1">
+                <h4 className="font-semibold text-[#44312A] mt-2 text-sm line-clamp-1">
                   {alert.work_title}
                 </h4>
 
-                <div className="mt-1 text-[11px] text-slate-500 flex space-x-3">
-                  <span>Constituency: <strong>{alert.constituency}</strong></span>
-                  <span>Cost: <strong>₹{alert.cost}L</strong></span>
+                <div className="mt-1 text-[11px] text-[#504F47] flex space-x-3">
+                  <span>Constituency: <strong className="text-[#44312A]">{alert.constituency}</strong></span>
+                  <span>Cost: <strong className="text-[#44312A]">₹{alert.cost}L</strong></span>
                 </div>
 
-                <div className="mt-3 p-2.5 bg-slate-50 rounded-lg border border-slate-100 text-slate-700 font-medium">
-                  <span className="text-slate-400 font-semibold block text-[10px] uppercase">Reason For Alert</span>
+                <div className="mt-3 p-2.5 bg-[#FAF7F2] rounded-lg border border-[#D8CBB6] text-[#504F47] font-medium">
+                  <span className="text-[#8C7769] font-semibold block text-[10px] uppercase">Reason For Alert</span>
                   {alert.reason}
                 </div>
 
                 {alert.reviewed_by && (
-                  <div className="mt-2 text-[10px] text-slate-400">
-                    Last reviewed by <span className="font-semibold">{alert.reviewed_by}</span> on {new Date(alert.reviewed_at).toLocaleDateString()}
+                  <div className="mt-2 text-[10px] text-[#8C7769]">
+                    Last reviewed by <span className="font-semibold text-[#44312A]">{alert.reviewed_by}</span> on {new Date(alert.reviewed_at).toLocaleDateString()}
                   </div>
                 )}
               </div>
 
               {/* Status Action Buttons */}
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+              <div className="pt-3 border-t border-[#D8CBB6] flex items-center justify-between">
                 <button
                   onClick={() => onInvestigate(alert.work_id)}
-                  className="flex items-center space-x-1 text-indigo-600 hover:text-indigo-800 font-semibold text-xs"
+                  className="flex items-center space-x-1 text-[#44312A] hover:text-[#6B5145] font-semibold text-xs"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
                   <span>AI Investigation</span>
@@ -126,7 +126,7 @@ export default function AlertsView({ alerts, onInvestigate, onRefresh }) {
                     <button
                       onClick={() => handleStatusChange(alert.id, 'Under Review')}
                       disabled={updatingId === alert.id}
-                      className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded font-medium transition"
+                      className="px-2.5 py-1 bg-[#44312A] hover:bg-[#34241E] text-[#E7DDCA] rounded font-medium transition"
                     >
                       Start Review
                     </button>
@@ -136,14 +136,14 @@ export default function AlertsView({ alerts, onInvestigate, onRefresh }) {
                       <button
                         onClick={() => handleStatusChange(alert.id, 'Verified')}
                         disabled={updatingId === alert.id}
-                        className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded font-medium transition"
+                        className="px-2.5 py-1 bg-[#44312A] hover:bg-[#34241E] text-[#E7DDCA] rounded font-medium transition"
                       >
                         Flag Irregularity
                       </button>
                       <button
                         onClick={() => handleStatusChange(alert.id, 'Dismissed')}
                         disabled={updatingId === alert.id}
-                        className="px-2.5 py-1 bg-slate-400 hover:bg-slate-500 text-white rounded font-medium transition"
+                        className="px-2.5 py-1 bg-[#FAF7F2] hover:bg-[#E7DDCA] text-[#44312A] border border-[#D8CBB6] rounded font-medium transition"
                       >
                         Dismiss
                       </button>
@@ -153,7 +153,7 @@ export default function AlertsView({ alerts, onInvestigate, onRefresh }) {
                     <button
                       onClick={() => handleStatusChange(alert.id, 'Resolved')}
                       disabled={updatingId === alert.id}
-                      className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-medium transition"
+                      className="px-2.5 py-1 bg-[#504F47] hover:bg-[#44312A] text-[#E7DDCA] rounded font-medium transition"
                     >
                       Mark Resolved
                     </button>
@@ -162,7 +162,7 @@ export default function AlertsView({ alerts, onInvestigate, onRefresh }) {
                     <button
                       onClick={() => handleStatusChange(alert.id, 'Under Review')}
                       disabled={updatingId === alert.id}
-                      className="px-2.5 py-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded font-medium transition"
+                      className="px-2.5 py-1 bg-[#FAF7F2] hover:bg-[#E7DDCA] text-[#44312A] border border-[#D8CBB6] rounded font-medium transition"
                     >
                       Reopen
                     </button>
