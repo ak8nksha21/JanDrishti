@@ -599,12 +599,76 @@ INDIAN_CONSTITUENCY_COORDINATES: Dict[str, Dict[str, Any]] = {
     "HARIDWAR": {"city": "Haridwar", "state": "Uttarakhand", "lat": 29.9457, "lon": 78.1642},
     "ALMORA": {"city": "Almora", "state": "Uttarakhand", "lat": 29.5971, "lon": 79.6591},
     "NAINITAL-UDHAM SINGH NAGAR": {"city": "Nainital", "state": "Uttarakhand", "lat": 29.3919, "lon": 79.4542},
+    "NAINITAL UDHAM SINGH NAG": {"city": "Nainital", "state": "Uttarakhand", "lat": 29.3919, "lon": 79.4542},
     "TEHRI GARHWAL": {"city": "New Tehri", "state": "Uttarakhand", "lat": 30.3925, "lon": 78.4811},
     "PONDICHERRY": {"city": "Puducherry", "state": "Puducherry", "lat": 11.9416, "lon": 79.8083},
     "PUDUCHERRY": {"city": "Puducherry", "state": "Puducherry", "lat": 11.9416, "lon": 79.8083},
     "ANDAMAN AND NICOBAR ISLANDS": {"city": "Port Blair", "state": "Andaman & Nicobar", "lat": 11.6234, "lon": 92.7265},
     "LAKSHADWEEP": {"city": "Kavaratti", "state": "Lakshadweep", "lat": 10.5667, "lon": 72.6417},
     "DADRA AND NAGAR HAVELI AND DAMAN AND DIU": {"city": "Daman", "state": "Daman and Diu", "lat": 20.4283, "lon": 72.8397},
+    "DADRA AND NAGAR HAVELI": {"city": "Silvassa", "state": "Dadra & Nagar Haveli", "lat": 20.2763, "lon": 73.0083},
+    "DADRA & NAGAR HAVELI": {"city": "Silvassa", "state": "Dadra & Nagar Haveli", "lat": 20.2763, "lon": 73.0083},
+    "DAMAN AND DIU": {"city": "Daman", "state": "Daman and Diu", "lat": 20.4283, "lon": 72.8397},
+
+    # Additional Canonical Indian Parliamentary Constituencies & Verified Aliases
+    "AMBEDKAR NAGAR": {"city": "Akbarpur", "state": "Uttar Pradesh", "lat": 26.4357, "lon": 82.5444},
+    "BARRACKPUR": {"city": "Barrackpore", "state": "West Bengal", "lat": 22.7645, "lon": 88.3777},
+    "BARRACKPORE": {"city": "Barrackpore", "state": "West Bengal", "lat": 22.7645, "lon": 88.3777},
+    "BHATINDA": {"city": "Bathinda", "state": "Punjab", "lat": 30.2110, "lon": 74.9455},
+    "BHONGIR": {"city": "Bhuvanagiri", "state": "Telangana", "lat": 17.5111, "lon": 78.8890},
+    "BHUVANAGIRI": {"city": "Bhuvanagiri", "state": "Telangana", "lat": 17.5111, "lon": 78.8890},
+    "BHIWANI MAHENDRAGARH": {"city": "Bhiwani", "state": "Haryana", "lat": 28.7930, "lon": 76.1390},
+    "BHIWANI-MAHENDRAGARH": {"city": "Bhiwani", "state": "Haryana", "lat": 28.7930, "lon": 76.1390},
+    "CHANDINI CHOWK": {"city": "Old Delhi", "state": "Delhi", "lat": 28.6506, "lon": 77.2303},
+    "CHELVELLA": {"city": "Chevella", "state": "Telangana", "lat": 17.3081, "lon": 78.1350},
+    "CHEVALLA": {"city": "Chevella", "state": "Telangana", "lat": 17.3081, "lon": 78.1350},
+    "CHIKBALLAPUR": {"city": "Chikkaballapur", "state": "Karnataka", "lat": 13.4355, "lon": 77.7275},
+    "CHIKKABALLAPUR": {"city": "Chikkaballapur", "state": "Karnataka", "lat": 13.4355, "lon": 77.7275},
+    "COOCHBEHAR": {"city": "Cooch Behar", "state": "West Bengal", "lat": 26.3239, "lon": 89.4510},
+    "COOCH BEHAR": {"city": "Cooch Behar", "state": "West Bengal", "lat": 26.3239, "lon": 89.4510},
+    "DARRANG UDALGURI": {"city": "Mangaldoi", "state": "Assam", "lat": 26.4375, "lon": 92.0345},
+    "DARRANG-UDALGURI": {"city": "Mangaldoi", "state": "Assam", "lat": 26.4375, "lon": 92.0345},
+    "DIPHU": {"city": "Diphu", "state": "Assam", "lat": 25.8454, "lon": 93.4317},
+    "HARDWAR": {"city": "Haridwar", "state": "Uttarakhand", "lat": 29.9457, "lon": 78.1642},
+    "JANJGIR CHAMPA": {"city": "Janjgir", "state": "Chhattisgarh", "lat": 22.0146, "lon": 82.5714},
+    "JANJGIR-CHAMPA": {"city": "Janjgir", "state": "Chhattisgarh", "lat": 22.0146, "lon": 82.5714},
+    "JHALAWAR BARAN": {"city": "Jhalawar", "state": "Rajasthan", "lat": 24.5973, "lon": 76.1610},
+    "JHALAWAR-BARAN": {"city": "Jhalawar", "state": "Rajasthan", "lat": 24.5973, "lon": 76.1610},
+    "JOYNAGAR": {"city": "Jaynagar", "state": "West Bengal", "lat": 22.1764, "lon": 88.4239},
+    "JAYNAGAR": {"city": "Jaynagar", "state": "West Bengal", "lat": 22.1764, "lon": 88.4239},
+    "KAISERGANJ": {"city": "Kaiserganj", "state": "Uttar Pradesh", "lat": 27.2478, "lon": 81.5458},
+    "KAISARGANJ": {"city": "Kaiserganj", "state": "Uttar Pradesh", "lat": 27.2478, "lon": 81.5458},
+    "KANNIYAKUMARI": {"city": "Kanyakumari", "state": "Tamil Nadu", "lat": 8.0883, "lon": 77.5385},
+    "KARAULI DHOLPUR": {"city": "Karauli", "state": "Rajasthan", "lat": 26.4984, "lon": 77.0224},
+    "KARAULI-DHOLPUR": {"city": "Karauli", "state": "Rajasthan", "lat": 26.4984, "lon": 77.0224},
+    "KUSHI NAGAR": {"city": "Kushinagar", "state": "Uttar Pradesh", "lat": 26.7410, "lon": 83.8887},
+    "KUSHINAGAR": {"city": "Kushinagar", "state": "Uttar Pradesh", "lat": 26.7410, "lon": 83.8887},
+    "MAHABUBABAD": {"city": "Mahabubabad", "state": "Telangana", "lat": 17.5982, "lon": 80.0038},
+    "MAHABUBNAGAR": {"city": "Mahbubnagar", "state": "Telangana", "lat": 16.7488, "lon": 77.9863},
+    "MANDSOUR": {"city": "Mandsaur", "state": "Madhya Pradesh", "lat": 24.0722, "lon": 75.0682},
+    "NAGINA": {"city": "Nagina", "state": "Uttar Pradesh", "lat": 29.4444, "lon": 78.4319},
+    "NARASAPURAM": {"city": "Narsapuram", "state": "Andhra Pradesh", "lat": 16.4337, "lon": 81.6917},
+    "NARSAPURAM": {"city": "Narsapuram", "state": "Andhra Pradesh", "lat": 16.4337, "lon": 81.6917},
+    "NOWGONG": {"city": "Nagaon", "state": "Assam", "lat": 26.3463, "lon": 92.6840},
+    "PALAMU": {"city": "Daltonganj", "state": "Jharkhand", "lat": 24.0378, "lon": 84.0689},
+    "PHULPUR": {"city": "Phulpur", "state": "Uttar Pradesh", "lat": 25.5517, "lon": 82.0833},
+    "PURVI CHAMPARAN": {"city": "Motihari", "state": "Bihar", "lat": 26.6469, "lon": 84.9089},
+    "EAST CHAMPARAN": {"city": "Motihari", "state": "Bihar", "lat": 26.6469, "lon": 84.9089},
+    "SARGUJA": {"city": "Ambikapur", "state": "Chhattisgarh", "lat": 23.1187, "lon": 83.1979},
+    "SURGUJA": {"city": "Ambikapur", "state": "Chhattisgarh", "lat": 23.1187, "lon": 83.1979},
+    "SHRAWASTI": {"city": "Shravasti", "state": "Uttar Pradesh", "lat": 27.5042, "lon": 82.0461},
+    "SHRAVASTI": {"city": "Shravasti", "state": "Uttar Pradesh", "lat": 27.5042, "lon": 82.0461},
+    "SONEPAT": {"city": "Sonipat", "state": "Haryana", "lat": 28.9931, "lon": 77.0151},
+    "SONIPAT": {"city": "Sonipat", "state": "Haryana", "lat": 28.9931, "lon": 77.0151},
+    "THOOTHUKKUDI": {"city": "Thoothukudi", "state": "Tamil Nadu", "lat": 8.7642, "lon": 78.1348},
+    "TONK SAWAI MADHOPUR": {"city": "Tonk", "state": "Rajasthan", "lat": 26.1664, "lon": 75.7891},
+    "TONK-SAWAI MADHOPUR": {"city": "Tonk", "state": "Rajasthan", "lat": 26.1664, "lon": 75.7891},
+    "UJJARPUR": {"city": "Ujiarpur", "state": "Bihar", "lat": 25.7533, "lon": 85.7878},
+    "UJIARPUR": {"city": "Ujiarpur", "state": "Bihar", "lat": 25.7533, "lon": 85.7878},
+    "WARANGEL": {"city": "Warangal", "state": "Telangana", "lat": 17.9784, "lon": 79.5941},
+    "WARANGAL": {"city": "Warangal", "state": "Telangana", "lat": 17.9784, "lon": 79.5941},
+    "YAVATMAL WASHIM": {"city": "Yavatmal", "state": "Maharashtra", "lat": 20.3888, "lon": 78.1204},
+    "YAVATMAL-WASHIM": {"city": "Yavatmal", "state": "Maharashtra", "lat": 20.3888, "lon": 78.1204},
 }
 
 # Non-geographic markers that should never receive synthetic coordinates
@@ -622,8 +686,17 @@ def _clean_key(name: Optional[str]) -> str:
     """Normalize location string for consistent dictionary matching."""
     if not name:
         return ""
-    clean = re.sub(r"[^A-Za-z0-9\s]", " ", str(name)).strip().upper()
+    # Strip (SC), (ST), (GEN), Lok Sabha, Constituency, etc.
+    clean = re.sub(r"[\(\[\{]?(?:SC|ST|GEN)[\)\]\}]?", "", str(name), flags=re.IGNORECASE)
+    clean = re.sub(r"\b(?:LOK SABHA|CONSTITUENCY|PARLIAMENTARY)\b", "", clean, flags=re.IGNORECASE)
+    clean = re.sub(r"[^A-Za-z0-9\s]", " ", clean).strip().upper()
     return re.sub(r"\s+", " ", clean)
+
+
+# Pre-built normalized lookup table for fast, robust resolution
+_NORMALIZED_COORDINATES: Dict[str, Dict[str, Any]] = {
+    _clean_key(k): v for k, v in INDIAN_CONSTITUENCY_COORDINATES.items()
+}
 
 
 def get_city_coordinates(
@@ -641,6 +714,8 @@ def get_city_coordinates(
         return None, None, None
 
     clean = _clean_key(constituency_or_city)
+    if not clean:
+        return None, None, None
 
     # 1. Immediately disqualify known non-geographic entities
     for non_geo in EXPLICIT_NON_GEOGRAPHIC:
@@ -651,27 +726,28 @@ def get_city_coordinates(
     if state:
         st_clean = _clean_key(state)
         if "HIMACHAL" in st_clean and "HAMIRPUR" in clean:
-            geo = INDIAN_CONSTITUENCY_COORDINATES.get("HAMIRPUR HP")
+            geo = _NORMALIZED_COORDINATES.get("HAMIRPUR HP")
             if geo:
                 return geo["city"], geo["lat"], geo["lon"]
         elif "UTTAR" in st_clean and "HAMIRPUR" in clean:
-            geo = INDIAN_CONSTITUENCY_COORDINATES.get("HAMIRPUR UP")
+            geo = _NORMALIZED_COORDINATES.get("HAMIRPUR UP")
             if geo:
                 return geo["city"], geo["lat"], geo["lon"]
         elif "BIHAR" in st_clean and "AURANGABAD" in clean:
-            geo = INDIAN_CONSTITUENCY_COORDINATES.get("AURANGABAD BIHAR")
+            geo = _NORMALIZED_COORDINATES.get("AURANGABAD BIHAR")
             if geo:
                 return geo["city"], geo["lat"], geo["lon"]
 
-    # 3. Direct exact match
-    if clean in INDIAN_CONSTITUENCY_COORDINATES:
-        geo = INDIAN_CONSTITUENCY_COORDINATES[clean]
-        return geo["city"], geo["lat"], geo["lon"]
+    # 3. Direct normalized match
+    if clean in _NORMALIZED_COORDINATES:
+        geo = _NORMALIZED_COORDINATES[clean]
+        lat, lon = geo["lat"], geo["lon"]
+        if INDIA_LAT_MIN <= lat <= INDIA_LAT_MAX and INDIA_LON_MIN <= lon <= INDIA_LON_MAX:
+            return geo["city"], lat, lon
 
-    # 4. Partial / Substring match against known keys
-    for key, geo in INDIAN_CONSTITUENCY_COORDINATES.items():
+    # 4. Partial / Substring match against known normalized keys
+    for key, geo in _NORMALIZED_COORDINATES.items():
         if key in clean or clean in key:
-            # Verify coordinates are in India
             lat, lon = geo["lat"], geo["lon"]
             if INDIA_LAT_MIN <= lat <= INDIA_LAT_MAX and INDIA_LON_MIN <= lon <= INDIA_LON_MAX:
                 return geo["city"], lat, lon

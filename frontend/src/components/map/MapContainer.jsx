@@ -736,19 +736,27 @@ export default function MapContainer({ loading = false }) {
                       <strong className="text-[#44312A] font-mono">{activeCityForDrawer.projects_count}</strong>
                     </div>
                   )}
+                  {activeCityForDrawer.total_spend !== null && activeCityForDrawer.total_spend !== undefined && (
+                    <div className="flex justify-between py-1 border-b border-[#D8CBB6]">
+                      <span>Itemized Works Spend:</span>
+                      <span className="text-[#44312A] font-mono font-bold" title={formatCroresLakhs(activeCityForDrawer.total_spend).exact}>
+                        {formatCroresLakhs(activeCityForDrawer.total_spend).compact}
+                      </span>
+                    </div>
+                  )}
                   {activeCityForDrawer.allocated_amount !== null && (
                     <div className="flex justify-between py-1 border-b border-[#D8CBB6]">
                       <span>MP Allocation:</span>
-                      <span className="text-[#44312A] font-mono font-bold">
-                        {formatCroresLakhs(activeCityForDrawer.allocated_amount).exact}
+                      <span className="text-[#44312A] font-mono font-bold" title={formatCroresLakhs(activeCityForDrawer.allocated_amount).exact}>
+                        {formatCroresLakhs(activeCityForDrawer.allocated_amount).compact}
                       </span>
                     </div>
                   )}
                   {activeCityForDrawer.total_expenditure !== null && (
                     <div className="flex justify-between py-1 border-b border-[#D8CBB6]">
                       <span>Total Expenditure:</span>
-                      <span className="text-[#44312A] font-mono font-bold">
-                        {formatCroresLakhs(activeCityForDrawer.total_expenditure).exact}
+                      <span className="text-[#44312A] font-mono font-bold" title={formatCroresLakhs(activeCityForDrawer.total_expenditure).exact}>
+                        {formatCroresLakhs(activeCityForDrawer.total_expenditure).compact}
                       </span>
                     </div>
                   )}

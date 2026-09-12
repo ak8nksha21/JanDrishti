@@ -174,11 +174,13 @@ def get_city_risks(db: Session = Depends(get_db)):
     Zero synthetic or fabricated coordinates: only cities with verified geographic coordinates
     are marked with has_coordinates=True.
     """
+    from app.services.geo.india_cities import _clean_key, EXPLICIT_NON_GEOGRAPHIC
+
     # 1. Fetch works and risk scores
     works = db.query(Work).all()
     risk_scores = {r.work_id: r for r in db.query(RiskScore).all()}
 
-    # Group works by constituency
+    # Group works by normalized constituency key
     const_works: Dict[str, Dict[str, Any]] = {}
     for w in works:
         wid = get_work_id_str(w)
@@ -188,10 +190,12 @@ def get_city_risks(db: Session = Depends(get_db)):
         c_raw = (w.constituency or w.district or "").strip()
         if not c_raw:
             continue
-        c_key = c_raw.upper()
+        c_key = _clean_key(c_raw)
+        if not c_key:
+            continue
         if c_key not in const_works:
             const_works[c_key] = {
-                "constituency": c_raw,
+                "constituency": c_raw.replace("(SC)", "").replace("(ST)", "").replace("(GEN)", "").strip(),
                 "state": w.state or "Unknown",
                 "works_count": 0,
                 "total_spend": 0.0,
@@ -202,6 +206,8 @@ def get_city_risks(db: Session = Depends(get_db)):
         const_works[c_key]["works_count"] += 1
         const_works[c_key]["total_spend"] += cost
         const_works[c_key]["scores"].append(score)
+        if w.mp_name and not const_works[c_key]["mp_name"]:
+            const_works[c_key]["mp_name"] = w.mp_name
         if r and r.flags_json:
             for f in r.flags_json:
                 const_works[c_key]["flags"].add(f)
@@ -211,7 +217,11 @@ def get_city_risks(db: Session = Depends(get_db)):
     mp_map: Dict[str, MPFinancialSummary] = {}
     for m in mps:
         if m.constituency:
-            mp_map[m.constituency.strip().upper()] = m
+            c_key = _clean_key(m.constituency)
+            if c_key:
+                # Prefer Lok Sabha entries over Rajya Sabha for key collision
+                if c_key not in mp_map or (m.house and "LOK" in m.house.upper()):
+                    mp_map[c_key] = m
 
     # 3. If there are constituencies with MP data but no works, evaluate anomaly scores
     mp_evaluations: Dict[str, Any] = {}
@@ -221,13 +231,13 @@ def get_city_risks(db: Session = Depends(get_db)):
             anomaly_service = AnomalyService()
             mp_eval_result = anomaly_service.evaluate_mps(db, limit=1000)
             for item in mp_eval_result.get("items", []):
-                c_name = str(item.get("constituency") or "").strip().upper()
+                c_name = _clean_key(str(item.get("constituency") or ""))
                 if c_name:
                     mp_evaluations[c_name] = item
         except Exception as exc:
             logger.warning(f"Unable to run MP cohort anomaly evaluations for cities: {exc}")
 
-    # 4. Merge all unique constituencies
+    # 4. Merge all unique constituencies (filter out non-geographic Rajya Sabha if no works exist)
     all_const_keys = set(const_works.keys()) | set(mp_map.keys())
 
     city_items: List[CityRiskItem] = []
@@ -237,6 +247,10 @@ def get_city_risks(db: Session = Depends(get_db)):
         w_data = const_works.get(c_key)
         m_data = mp_map.get(c_key)
         mp_eval = mp_evaluations.get(c_key, {})
+
+        # Skip explicit non-geographic summaries (e.g. Sitting Rajya Sabha) if no works are attached
+        if not w_data and (c_key in EXPLICIT_NON_GEOGRAPHIC or any(x in c_key for x in ["RAJYA SABHA", "NOMINATED"])):
+            continue
 
         # Determine display names
         constituency_display = (w_data["constituency"] if w_data else m_data.constituency) if (w_data or m_data) else c_key
@@ -269,6 +283,8 @@ def get_city_risks(db: Session = Depends(get_db)):
                 risk_score = 20.0
         else:
             risk_score = 20.0
+
+        risk_score = max(0.0, min(100.0, risk_score))
 
         # Categorize into product bands (0-29, 30-59, 60-79, 80-100)
         risk_category, risk_level = categorize_risk_tier(risk_score)

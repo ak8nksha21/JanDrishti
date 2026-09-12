@@ -24,10 +24,28 @@ else:
         )
     except Exception as exc:
         logger.warning(
-            f"Unable to initialize PostgreSQL engine ({exc}). Falling back to local SQLite database at data/jandrishti.db"
+            f"Unable to initialize PostgreSQL engine ({exc}). Falling back to local SQLite database."
         )
-        os.makedirs("data", exist_ok=True)
-        sqlite_url = "sqlite:///./data/jandrishti.db"
+        # Search for data/jandrishti.db in project root or relative directories
+        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+        possible_paths = [
+            os.path.join(base_dir, "data", "jandrishti.db"),
+            os.path.join(base_dir, "backend", "data", "jandrishti.db"),
+            os.path.abspath("data/jandrishti.db"),
+            os.path.abspath("backend/data/jandrishti.db"),
+            os.path.abspath("../data/jandrishti.db"),
+        ]
+        db_file = None
+        for p in possible_paths:
+            if os.path.exists(p) and os.path.getsize(p) > 0:
+                db_file = p
+                break
+        if not db_file:
+            db_file = possible_paths[0]
+            os.makedirs(os.path.dirname(db_file), exist_ok=True)
+            
+        sqlite_url = f"sqlite:///{db_file}"
+        logger.info(f"Using SQLite database at {db_file}")
         engine = create_engine(sqlite_url, connect_args={"check_same_thread": False})
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

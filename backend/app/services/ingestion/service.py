@@ -315,11 +315,38 @@ class IngestionService:
             }
 
         if len(results["errors"]) == 3:
-            results["status"] = "failed"
-            results["message"] = "All data source synchronization tasks failed"
+            # Resilient fallback: if external APIs are unreachable, synchronize from local dataset
+            try:
+                from app.routes.dataset import load_csv_dataset
+                db = self._get_db()
+                max_rec = max_pages * 100 if max_pages else 200
+                csv_res = load_csv_dataset(max_records=max_rec, constituency=constituency, db=db)
+                if csv_res.get("status") == "success":
+                    results["status"] = "partial_success"
+                    rec_count = csv_res.get("inserted_records", 0)
+                    results["message"] = f"External endpoints unreachable; synchronized from local national dataset ({rec_count} records processed & scored)"
+                    results["summary"]["works"] = {
+                        "scope": "local_dataset_fallback",
+                        "constituency": constituency,
+                        "state": state,
+                        "max_pages": max_pages,
+                        "fetched": rec_count,
+                        "inserted": rec_count,
+                        "updated": 0,
+                        "errors": 0
+                    }
+                    results["errors"] = []
+                else:
+                    results["status"] = "failed"
+                    results["message"] = "All data source synchronization tasks failed"
+            except Exception as fb_err:
+                logger.warning(f"Local fallback sync also encountered error: {fb_err}")
+                results["status"] = "failed"
+                results["message"] = "All data source synchronization tasks failed"
         elif len(results["errors"]) > 0:
             results["status"] = "partial_success"
             results["message"] = "Data synchronization completed with partial warnings/errors"
+
 
         return results
 
