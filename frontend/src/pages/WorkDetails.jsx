@@ -8,6 +8,13 @@ import {
   ExternalLink,
   ShieldCheck,
   TrendingUp,
+  Calculator,
+  Clock,
+  PieChart,
+  Layers,
+  FileCheck,
+  Scale,
+  Info,
 } from 'lucide-react';
 import Card, { CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
@@ -98,6 +105,75 @@ export default function WorkDetails({ workId: propWorkId }) {
   }
 
   const costFormatted = formatCroresLakhs(work.cost || 0);
+  const riskScore = riskData?.risk_score;
+  const advancedSignals = riskData?.advanced_signals;
+  const costOverrun = advancedSignals?.cost_overrun;
+  const delayAnalysis = advancedSignals?.delay_analysis;
+  const paymentAnomaly = advancedSignals?.payment_anomaly;
+
+  // Format Cost Overrun display status & badge
+  const getCostOverrunBadge = (status) => {
+    switch (status) {
+      case 'within_budget':
+      case 'no_overrun':
+        return { label: 'Within Budget', variant: 'default', textClass: 'text-[#44312A]' };
+      case 'moderate_overrun':
+        return { label: 'Moderate Overrun', variant: 'warning', textClass: 'text-[#6B5145]' };
+      case 'high_overrun':
+      case 'critical_overrun':
+        return { label: 'Elevated Overrun', variant: 'destructive', textClass: 'text-[#44312A]' };
+      case 'zero_baseline':
+      case 'invalid_negative_values':
+        return { label: 'Zero Baseline Anomaly', variant: 'warning', textClass: 'text-[#6B5145]' };
+      case 'insufficient_data':
+      default:
+        return { label: 'Insufficient Data', variant: 'outline', textClass: 'text-[#8C7769]' };
+    }
+  };
+
+  // Format Delay Analysis display status & badge
+  const getDelayBadge = (status) => {
+    switch (status) {
+      case 'within_normal_baseline':
+      case 'normal_duration':
+        return { label: 'Within Baseline', variant: 'default', textClass: 'text-[#44312A]' };
+      case 'moderate_delay':
+      case 'moderate_duration_variance':
+        return { label: 'Moderate Variance', variant: 'warning', textClass: 'text-[#6B5145]' };
+      case 'elevated_delay':
+      case 'elevated_execution_duration':
+        return { label: 'Elevated Duration', variant: 'warning', textClass: 'text-[#6B5145]' };
+      case 'critical_delay':
+      case 'unusually_long_duration':
+        return { label: 'Unusually Long Duration', variant: 'destructive', textClass: 'text-[#44312A]' };
+      case 'insufficient_data':
+      default:
+        return { label: 'Insufficient Data', variant: 'outline', textClass: 'text-[#8C7769]' };
+    }
+  };
+
+  // Format Payment Anomaly display status & badge
+  const getPaymentBadge = (status) => {
+    switch (status) {
+      case 'normal_execution':
+      case 'balanced':
+        return { label: 'Normal Execution', variant: 'default', textClass: 'text-[#44312A]' };
+      case 'moderate_discrepancy':
+        return { label: 'Moderate Discrepancy', variant: 'warning', textClass: 'text-[#6B5145]' };
+      case 'elevated_payment_gap':
+      case 'disproportionate_expenditure':
+        return { label: 'Elevated Gap Signal', variant: 'warning', textClass: 'text-[#6B5145]' };
+      case 'critical_divergence':
+        return { label: 'Execution Divergence', variant: 'destructive', textClass: 'text-[#44312A]' };
+      case 'insufficient_data':
+      default:
+        return { label: 'Insufficient Data', variant: 'outline', textClass: 'text-[#8C7769]' };
+    }
+  };
+
+  const overrunBadge = getCostOverrunBadge(costOverrun?.overrun_status);
+  const delayBadge = getDelayBadge(delayAnalysis?.delay_status);
+  const paymentBadge = getPaymentBadge(paymentAnomaly?.financial_execution_status);
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -156,6 +232,267 @@ export default function WorkDetails({ workId: propWorkId }) {
           </p>
         )}
       </div>
+
+      {/* Canonical Work Risk Engine Assessment */}
+      {riskScore && (
+        <Card className="border-2 border-[#D8CBB6] bg-white overflow-hidden">
+          <CardHeader className="bg-[#FAF7F2] border-b border-[#D8CBB6]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="h-8 w-8 rounded-xl bg-[#44312A] flex items-center justify-center text-white font-bold shadow-xs">
+                  <ShieldCheck className="h-4.5 w-4.5 text-[#E7DDCA]" />
+                </div>
+                <div>
+                  <CardTitle className="text-sm font-bold text-[#44312A]">
+                    Canonical Work Risk Assessment
+                  </CardTitle>
+                  <CardDescription className="text-xs text-[#504F47]">
+                    Deterministic 6-signal composite risk score evaluated by the JanDrishti Risk Engine
+                  </CardDescription>
+                </div>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <span className="text-xs text-[#504F47]">Overall Risk Rating:</span>
+                <span className="font-mono text-base font-black text-[#44312A]">
+                  {riskScore.overall_score !== null ? `${Number(riskScore.overall_score).toFixed(1)} / 100` : 'N/A'}
+                </span>
+                <Badge variant={riskScore.overall_score >= 60 ? 'warning' : 'default'} size="sm">
+                  {riskScore.risk_level || 'Low Risk'}
+                </Badge>
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent className="p-5 space-y-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+              <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#D8CBB6] space-y-1">
+                <span className="text-[10px] font-bold uppercase text-[#504F47] block font-mono">
+                  ML Anomaly (25%)
+                </span>
+                <span className="text-sm font-black font-mono text-[#44312A]">
+                  {riskScore.ml_anomaly_score !== null ? Number(riskScore.ml_anomaly_score).toFixed(1) : 'N/A'}
+                </span>
+              </div>
+              <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#D8CBB6] space-y-1">
+                <span className="text-[10px] font-bold uppercase text-[#504F47] block font-mono">
+                  Cost Anomaly (25%)
+                </span>
+                <span className="text-sm font-black font-mono text-[#44312A]">
+                  {riskScore.cost_score !== null ? Number(riskScore.cost_score).toFixed(1) : 'N/A'}
+                </span>
+              </div>
+              <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#D8CBB6] space-y-1">
+                <span className="text-[10px] font-bold uppercase text-[#504F47] block font-mono">
+                  Duplicate (20%)
+                </span>
+                <span className="text-sm font-black font-mono text-[#44312A]">
+                  {riskScore.duplicate_score !== null ? Number(riskScore.duplicate_score).toFixed(1) : 'N/A'}
+                </span>
+              </div>
+              <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#D8CBB6] space-y-1">
+                <span className="text-[10px] font-bold uppercase text-[#504F47] block font-mono">
+                  Utilization Gap (15%)
+                </span>
+                <span className="text-sm font-black font-mono text-[#44312A]">
+                  {riskScore.utilization_score !== null ? Number(riskScore.utilization_score).toFixed(1) : 'N/A'}
+                </span>
+              </div>
+              <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#D8CBB6] space-y-1">
+                <span className="text-[10px] font-bold uppercase text-[#504F47] block font-mono">
+                  Geographic (10%)
+                </span>
+                <span className="text-sm font-black font-mono text-[#44312A]">
+                  {riskScore.geographic_score !== null ? Number(riskScore.geographic_score).toFixed(1) : 'N/A'}
+                </span>
+              </div>
+              <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#D8CBB6] space-y-1">
+                <span className="text-[10px] font-bold uppercase text-[#504F47] block font-mono">
+                  Data Quality (5%)
+                </span>
+                <span className="text-sm font-black font-mono text-[#44312A]">
+                  {riskScore.data_quality_score !== null ? Number(riskScore.data_quality_score).toFixed(1) : 'N/A'}
+                </span>
+              </div>
+            </div>
+
+            {riskScore.flags && riskScore.flags.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-1 text-xs">
+                <span className="text-[10px] font-bold text-[#504F47] uppercase font-mono">Triggered Flags:</span>
+                {riskScore.flags.map((flag, idx) => (
+                  <span key={idx} className="px-2 py-0.5 rounded-md bg-[#FAF7F2] text-[#44312A] border border-[#D8CBB6] font-mono text-[11px]">
+                    {flag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Advanced Analytical Signals (Supplementary Intelligence) */}
+      <Card className="border-2 border-[#D8CBB6] bg-white overflow-hidden">
+        <CardHeader className="bg-[#FAF7F2] border-b border-[#D8CBB6]">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4.5 w-4.5 text-[#44312A]" />
+              <div>
+                <CardTitle className="text-sm font-bold text-[#44312A]">
+                  Advanced Analytical Signals (Supplementary Intelligence)
+                </CardTitle>
+                <CardDescription className="text-xs text-[#504F47]">
+                  Independent budget deviation, execution timeline, and aggregate financial cashflow evaluations
+                </CardDescription>
+              </div>
+            </div>
+            <Badge variant="primary" size="sm">
+              SUPPLEMENTARY SIGNALS
+            </Badge>
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-5 space-y-5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* 1. Cost Overrun Analysis */}
+            <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#D8CBB6] flex flex-col justify-between space-y-3">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <Calculator className="h-4 w-4 text-[#44312A]" />
+                    <h4 className="text-xs font-bold text-[#44312A]">Cost Overrun Detection</h4>
+                  </div>
+                  <Badge variant={overrunBadge.variant} size="sm">
+                    {overrunBadge.label}
+                  </Badge>
+                </div>
+
+                <p className="text-[11px] text-[#504F47] leading-relaxed">
+                  {costOverrun?.overrun_status === 'insufficient_data'
+                    ? 'Verified sanctioned-cost baseline unavailable for work-level budgetary overrun analysis.'
+                    : costOverrun?.evidence && costOverrun.evidence.length > 0
+                    ? costOverrun.evidence[0]
+                    : 'Actual expenditure conforms to sanctioned baseline limit.'}
+                </p>
+              </div>
+
+              <div className="pt-2.5 border-t border-[#D8CBB6] space-y-1 text-[11px]">
+                <div className="flex justify-between text-[#504F47]">
+                  <span>Sanctioned Baseline:</span>
+                  <strong className="font-mono text-[#44312A]">
+                    {costOverrun?.sanctioned_cost ? formatCroresLakhs(costOverrun.sanctioned_cost).compact : 'Unavailable'}
+                  </strong>
+                </div>
+                <div className="flex justify-between text-[#504F47]">
+                  <span>Reported Overrun:</span>
+                  <strong className="font-mono text-[#44312A]">
+                    {costOverrun?.overrun_amount !== null && costOverrun?.overrun_amount !== undefined
+                      ? `₹${Number(costOverrun.overrun_amount).toLocaleString('en-IN')}`
+                      : 'N/A (No Baseline)'}
+                  </strong>
+                </div>
+                <div className="text-[9px] text-[#8C7769] font-mono pt-1">
+                  Baseline Deviation • Distinct from Peer Anomaly
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Execution Duration Analysis */}
+            <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#D8CBB6] flex flex-col justify-between space-y-3">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <Clock className="h-4 w-4 text-[#44312A]" />
+                    <h4 className="text-xs font-bold text-[#44312A]">Execution Duration</h4>
+                  </div>
+                  <Badge variant={delayBadge.variant} size="sm">
+                    {delayBadge.label}
+                  </Badge>
+                </div>
+
+                <p className="text-[11px] text-[#504F47] leading-relaxed">
+                  {delayAnalysis?.delay_status === 'insufficient_data'
+                    ? 'Verified sanction date unavailable for execution-duration statistical analysis.'
+                    : delayAnalysis?.observations && delayAnalysis.observations.length > 0
+                    ? delayAnalysis.observations[0]
+                    : 'Execution timeline aligns with statistical peer completion baselines.'}
+                </p>
+              </div>
+
+              <div className="pt-2.5 border-t border-[#D8CBB6] space-y-1 text-[11px]">
+                <div className="flex justify-between text-[#504F47]">
+                  <span>Execution Duration:</span>
+                  <strong className="font-mono text-[#44312A]">
+                    {delayAnalysis?.duration_days !== null && delayAnalysis?.duration_days !== undefined
+                      ? `${delayAnalysis.duration_days} Days`
+                      : 'Unavailable'}
+                  </strong>
+                </div>
+                <div className="flex justify-between text-[#504F47]">
+                  <span>Peer Category Median:</span>
+                  <strong className="font-mono text-[#44312A]">
+                    {delayAnalysis?.peer_median_days !== null && delayAnalysis?.peer_median_days !== undefined
+                      ? `${delayAnalysis.peer_median_days} Days`
+                      : 'Baseline Active'}
+                  </strong>
+                </div>
+                <div className="text-[9px] text-[#8C7769] font-mono pt-1">
+                  Temporal Audit • Requires Verified Sanction Date
+                </div>
+              </div>
+            </div>
+
+            {/* 3. Payment & Execution Anomaly */}
+            <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#D8CBB6] flex flex-col justify-between space-y-3">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <PieChart className="h-4 w-4 text-[#44312A]" />
+                    <h4 className="text-xs font-bold text-[#44312A]">Payment & Execution Anomaly</h4>
+                  </div>
+                  <Badge variant={paymentBadge.variant} size="sm">
+                    {paymentBadge.label}
+                  </Badge>
+                </div>
+
+                <p className="text-[11px] text-[#504F47] leading-relaxed">
+                  {paymentAnomaly?.observations && paymentAnomaly.observations.length > 0
+                    ? paymentAnomaly.observations[0]
+                    : 'Disbursements and physical completion ratios indicate balanced financial execution.'}
+                </p>
+              </div>
+
+              <div className="pt-2.5 border-t border-[#D8CBB6] space-y-1 text-[11px]">
+                <div className="flex justify-between text-[#504F47]">
+                  <span>Expenditure Utilization:</span>
+                  <strong className="font-mono text-[#44312A]">
+                    {paymentAnomaly?.metrics?.utilization_percentage !== undefined && paymentAnomaly?.metrics?.utilization_percentage !== null
+                      ? `${Number(paymentAnomaly.metrics.utilization_percentage).toFixed(1)}%`
+                      : 'N/A'}
+                  </strong>
+                </div>
+                <div className="flex justify-between text-[#504F47]">
+                  <span>Physical Completion:</span>
+                  <strong className="font-mono text-[#44312A]">
+                    {paymentAnomaly?.metrics?.completion_rate !== undefined && paymentAnomaly?.metrics?.completion_rate !== null
+                      ? `${Number(paymentAnomaly.metrics.completion_rate).toFixed(1)}%`
+                      : 'N/A'}
+                  </strong>
+                </div>
+                <div className="text-[9px] text-[#8C7769] font-mono pt-1">
+                  Aggregate Financial Signal • Not Transaction Audit
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#D8CBB6] text-[11px] text-[#504F47] flex items-start gap-2">
+            <Info className="h-3.5 w-3.5 text-[#44312A] shrink-0 mt-0.5" />
+            <p className="leading-relaxed">
+              <strong className="text-[#44312A]">Methodology Distinction: </strong>
+              Advanced analytical signals provide supplementary forensic insights into project budgetary variance, execution timelines, and aggregate financial cashflow. These signals operate independently and are not added as weights into the canonical 6-signal Work Risk Engine score.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Grid of Sections: Basic Info, Financial, Location, Implementation, Provenance */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

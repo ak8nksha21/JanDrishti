@@ -435,6 +435,21 @@ def get_work_risk_detail(work_id: str, db: Session = Depends(get_db)):
         or_(SimilarWork.work_id == wid, SimilarWork.matched_work_id == wid)
     ).all()
 
+    # Evaluate Supplementary Intelligence Detectors
+    from ml.cost_overrun import CostOverrunDetector
+    from ml.delay_detection import DelayDetector
+    from ml.payment_anomaly import PaymentAnomalyDetector
+
+    cost_overrun_eval = CostOverrunDetector().evaluate_work(work)
+    delay_eval = DelayDetector().evaluate_work(work)
+
+    mp = None
+    if work.constituency:
+        mp = db.query(MPFinancialSummary).filter(MPFinancialSummary.constituency.ilike(f"%{work.constituency.strip()}%")).first()
+    if not mp and work.mp_name:
+        mp = db.query(MPFinancialSummary).filter(MPFinancialSummary.mp_name.ilike(f"%{work.mp_name.strip()}%")).first()
+    payment_eval = PaymentAnomalyDetector().evaluate_record(mp or work)
+
     return {
         "work": {
             "work_id": wid,
@@ -464,7 +479,12 @@ def get_work_risk_detail(work_id: str, db: Session = Depends(get_db)):
             "data_quality_score": r.data_quality_score if r else 0.0,
             "flags": r.flags_json if r and r.flags_json else []
         },
-        "similar_works_count": len(similar)
+        "similar_works_count": len(similar),
+        "advanced_signals": {
+            "cost_overrun": cost_overrun_eval,
+            "delay_analysis": delay_eval,
+            "payment_anomaly": payment_eval,
+        }
     }
 
 

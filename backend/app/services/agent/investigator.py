@@ -338,13 +338,32 @@ class AIAgentInvestigator:
         else:
             recommended_action = "Standard processing: No adverse risk indicators detected; proceed with routine closure."
 
+        # Supplementary Intelligence (Cost Overrun, Delay Detection, Payment Anomaly)
+        from ml.cost_overrun import CostOverrunDetector
+        from ml.delay_detection import DelayDetector
+        from ml.payment_anomaly import PaymentAnomalyDetector
+
+        cost_overrun_eval = CostOverrunDetector().evaluate_work(work)
+        delay_eval = DelayDetector().evaluate_work(work)
+        payment_eval = PaymentAnomalyDetector().evaluate_record(mp or work)
+
+        if cost_overrun_eval.get("overrun_status") == "insufficient_data":
+            data_limitations.append("Verified sanctioned-cost baseline unavailable for work-level overrun analysis.")
+        if delay_eval.get("delay_status") == "insufficient_data":
+            data_limitations.append("Verified sanction date unavailable for execution-duration analysis.")
+
         supporting_evidence = {
             "work_id": work_id,
             "cost_details": cost_analysis,
             "risk_components": components,
             "mp_financials": mp_financials,
             "geographic_context": geo_context,
-            "data_quality": data_quality
+            "data_quality": data_quality,
+            "supplementary_intelligence": {
+                "cost_overrun": cost_overrun_eval,
+                "delay_analysis": delay_eval,
+                "payment_anomaly": payment_eval
+            }
         }
 
         return InvestigationResult(
