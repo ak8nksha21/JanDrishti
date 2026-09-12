@@ -57,83 +57,114 @@ function InitialIndiaBounds() {
   return null;
 }
 
-// Custom Leaflet DivIcon generator adhering strictly to JanDrishti Cream #E7DDCA & Dark Brown #44312A palette
-function createRiskMarkerIcon(category, score) {
-  const cat = String(category || '').toLowerCase();
-  let fillColor = '#8C7769'; // Standard: Muted Slate Taupe
-  let ringColor = 'rgba(140, 119, 105, 0.28)';
-  let dotSize = 13;
-  let ringSize = 22;
-  let pulseAnimation = '';
+// Visual Risk Color Configuration (Exact Bright High-Contrast Scheme)
+// 🟢 LOW / STANDARD (0–29): Bright Green #22C55E
+// 🟡 NEEDS REVIEW (30–59): Bright Yellow #FACC15 (with dark border for high contrast)
+// 🟠 FLAGGED RISK (60–79): Bright Orange #F97316
+// 🔴 PRIORITY / CRITICAL (80–100): Bright Red #EF4444 (most visually prominent)
+export function getRiskTierConfig(score) {
+  const numericScore = typeof score === 'number' ? score : parseFloat(score) || 0;
 
-  if (cat.includes('priority') || score >= 80) {
-    fillColor = '#44312A'; // Priority Review: Deep Dark Cocoa
-    ringColor = 'rgba(68, 49, 42, 0.45)';
-    dotSize = 16;
-    ringSize = 28;
-    pulseAnimation = 'animation: pulse 1.8s infinite;';
-  } else if (cat.includes('flagged') || score >= 60) {
-    fillColor = '#504F47'; // Flagged Risk: Charcoal Taupe
-    ringColor = 'rgba(80, 79, 71, 0.38)';
-    dotSize = 14;
-    ringSize = 25;
-    pulseAnimation = 'animation: pulse 2.2s infinite;';
-  } else if (cat.includes('review') || score >= 30) {
-    fillColor = '#6B5145'; // Needs Review: Warm Mocha
-    ringColor = 'rgba(107, 81, 69, 0.32)';
-    dotSize = 13;
-    ringSize = 22;
+  if (numericScore >= 80) {
+    return {
+      tier: 'PRIORITY',
+      label: 'Priority',
+      range: '80–100',
+      color: '#EF4444', // Bright Red
+      ringColor: 'rgba(239, 68, 68, 0.40)',
+      dotSize: 16,
+      ringSize: 30,
+      borderStyle:
+        'border: 2.5px solid #FFFFFF; box-shadow: 0 0 0 1.5px #B91C1C, 0 3px 12px rgba(239, 68, 68, 0.75), 0 2px 5px rgba(0,0,0,0.5);',
+      pulseAnimation: 'animation: riskPulseRed 1.6s infinite ease-in-out;',
+      badgeClass: 'bg-[#EF4444] text-white border-[#DC2626]',
+      dotBg: 'bg-[#EF4444]',
+      zIndexOffset: 1000,
+      scoreColorClass: 'text-[#EF4444]',
+      iconEmoji: '🔴',
+    };
   }
 
+  if (numericScore >= 60) {
+    return {
+      tier: 'FLAGGED',
+      label: 'Flagged Risk',
+      range: '60–79',
+      color: '#F97316', // Bright Orange
+      ringColor: 'rgba(249, 115, 22, 0.38)',
+      dotSize: 14,
+      ringSize: 26,
+      borderStyle:
+        'border: 2px solid #FFFFFF; box-shadow: 0 0 0 1.5px #C2410C, 0 2px 10px rgba(249, 115, 22, 0.65), 0 2px 4px rgba(0,0,0,0.4);',
+      pulseAnimation: 'animation: riskPulseOrange 2.2s infinite ease-in-out;',
+      badgeClass: 'bg-[#F97316] text-white border-[#EA580C]',
+      dotBg: 'bg-[#F97316]',
+      zIndexOffset: 600,
+      scoreColorClass: 'text-[#F97316]',
+      iconEmoji: '🟠',
+    };
+  }
+
+  if (numericScore >= 30) {
+    return {
+      tier: 'REVIEW',
+      label: 'Needs Review',
+      range: '30–59',
+      color: '#FACC15', // Bright Yellow
+      ringColor: 'rgba(250, 204, 21, 0.40)',
+      dotSize: 13,
+      ringSize: 22,
+      // Dark slate border for high contrast readability against light map background
+      borderStyle:
+        'border: 2.5px solid #0F172A; box-shadow: 0 0 0 1.5px #FFFFFF, 0 2px 8px rgba(0,0,0,0.45);',
+      pulseAnimation: '',
+      badgeClass: 'bg-[#FACC15] text-[#0F172A] border-[#EAB308] font-black',
+      dotBg: 'bg-[#FACC15]',
+      zIndexOffset: 300,
+      scoreColorClass: 'text-[#CA8A04]',
+      iconEmoji: '🟡',
+    };
+  }
+
+  return {
+    tier: 'STANDARD',
+    label: 'Standard',
+    range: '0–29',
+    color: '#22C55E', // Bright Green
+    ringColor: 'rgba(34, 197, 94, 0.32)',
+    dotSize: 12,
+    ringSize: 20,
+    borderStyle:
+      'border: 2px solid #FFFFFF; box-shadow: 0 0 0 1.5px #15803D, 0 2px 8px rgba(34, 197, 94, 0.6), 0 2px 4px rgba(0,0,0,0.35);',
+    pulseAnimation: '',
+    badgeClass: 'bg-[#22C55E] text-white border-[#16A34A]',
+    dotBg: 'bg-[#22C55E]',
+    zIndexOffset: 100,
+    scoreColorClass: 'text-[#16A34A]',
+    iconEmoji: '🟢',
+  };
+}
+
+// Custom Leaflet DivIcon generator dynamically driven by actual 0-100 risk score
+function createRiskMarkerIcon(score) {
+  const cfg = getRiskTierConfig(score);
+
   const html = `
-    <div style="position: relative; width: ${ringSize}px; height: ${ringSize}px; display: flex; align-items: center; justify-content: center;">
-      <div style="position: absolute; width: ${ringSize}px; height: ${ringSize}px; border-radius: 50%; background-color: ${ringColor}; ${pulseAnimation}"></div>
-      <div style="width: ${dotSize}px; height: ${dotSize}px; border-radius: 50%; background-color: ${fillColor}; border: 2px solid #FFFFFF; box-shadow: 0 2px 6px rgba(68,49,42,0.4);"></div>
+    <div style="position: relative; width: ${cfg.ringSize}px; height: ${cfg.ringSize}px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+      <div style="position: absolute; width: ${cfg.ringSize}px; height: ${cfg.ringSize}px; border-radius: 50%; background-color: ${cfg.ringColor}; ${cfg.pulseAnimation} pointer-events: none;"></div>
+      <div style="position: relative; width: ${cfg.dotSize}px; height: ${cfg.dotSize}px; border-radius: 50%; background-color: ${cfg.color}; ${cfg.borderStyle}"></div>
     </div>
   `;
 
   return L.divIcon({
     className: 'custom-city-risk-pin',
     html: html,
-    iconSize: [ringSize, ringSize],
-    iconAnchor: [ringSize / 2, ringSize / 2],
-    popupAnchor: [0, -(ringSize / 2)],
+    iconSize: [cfg.ringSize, cfg.ringSize],
+    iconAnchor: [cfg.ringSize / 2, cfg.ringSize / 2],
+    popupAnchor: [0, -(cfg.ringSize / 2)],
   });
 }
 
-function getRiskCategoryConfig(category, score) {
-  const cat = String(category || '').toLowerCase();
-  if (cat.includes('priority') || score >= 80) {
-    return {
-      label: 'Priority Review',
-      badgeClass: 'bg-[#44312A] text-white border-[#44312A]',
-      dotBg: 'bg-white',
-      borderClass: 'border-[#44312A]',
-    };
-  }
-  if (cat.includes('flagged') || score >= 60) {
-    return {
-      label: 'Flagged Risk',
-      badgeClass: 'bg-[#504F47] text-white border-[#504F47]',
-      dotBg: 'bg-[#E7DDCA]',
-      borderClass: 'border-[#504F47]',
-    };
-  }
-  if (cat.includes('review') || score >= 30) {
-    return {
-      label: 'Needs Review',
-      badgeClass: 'bg-[#F4EFE6] text-[#44312A] border-[#CFC0A7]',
-      dotBg: 'bg-[#6B5145]',
-      borderClass: 'border-[#CFC0A7]',
-    };
-  }
-  return {
-    label: 'Standard',
-    badgeClass: 'bg-white text-[#504F47] border-[#D8CBB6]',
-    dotBg: 'bg-[#8C7769]',
-    borderClass: 'border-[#D8CBB6]',
-  };
-}
 
 export default function MapContainer({ loading = false }) {
   const [citiesData, setCitiesData] = useState([]);
@@ -194,21 +225,24 @@ export default function MapContainer({ loading = false }) {
     return Array.from(sSet).sort();
   }, [validCityMarkers]);
 
-  // Counts for each filter tab
+  // Counts for each filter tab based on dynamic 0-100 risk score
   const filterCounts = useMemo(() => {
+    let priority = 0;
     let flagged = 0;
     let review = 0;
     let standard = 0;
 
     validCityMarkers.forEach((c) => {
       const score = Number(c.risk_score || 0);
-      if (score >= 60) flagged++;
+      if (score >= 80) priority++;
+      else if (score >= 60) flagged++;
       else if (score >= 30) review++;
       else standard++;
     });
 
     return {
       all: validCityMarkers.length,
+      priority,
       flagged,
       review,
       standard,
@@ -220,9 +254,11 @@ export default function MapContainer({ loading = false }) {
     return validCityMarkers.filter((m) => {
       const score = Number(m.risk_score || 0);
 
-      // Risk level filter
-      if (selectedRiskFilter === 'FLAGGED') {
-        if (score < 60) return false;
+      // Risk level filter driven by dynamic score
+      if (selectedRiskFilter === 'PRIORITY') {
+        if (score < 80) return false;
+      } else if (selectedRiskFilter === 'FLAGGED') {
+        if (score < 60 || score >= 80) return false;
       } else if (selectedRiskFilter === 'REVIEW') {
         if (score < 30 || score >= 60) return false;
       } else if (selectedRiskFilter === 'STANDARD') {
@@ -261,7 +297,7 @@ export default function MapContainer({ loading = false }) {
           {/* Filter Controls Bar */}
           <div className="flex flex-wrap items-center gap-2">
             {/* Risk Category Filter Buttons */}
-            <div className="flex items-center p-0.5 rounded-xl bg-[#FAF7F2] border border-[#D8CBB6] text-xs font-semibold">
+            <div className="flex flex-wrap items-center p-0.5 rounded-xl bg-[#FAF7F2] border border-[#D8CBB6] text-xs font-semibold">
               <button
                 onClick={() => setSelectedRiskFilter('ALL')}
                 className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
@@ -273,36 +309,47 @@ export default function MapContainer({ loading = false }) {
                 All ({filterCounts.all})
               </button>
               <button
+                onClick={() => setSelectedRiskFilter('PRIORITY')}
+                className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 cursor-pointer ${
+                  selectedRiskFilter === 'PRIORITY'
+                    ? 'bg-[#EF4444] text-white font-bold shadow-xs'
+                    : 'text-[#504F47] hover:text-[#EF4444]'
+                }`}
+              >
+                <span className="h-2.5 w-2.5 rounded-full bg-[#EF4444] border border-white shrink-0" />
+                <span>Priority ({filterCounts.priority})</span>
+              </button>
+              <button
                 onClick={() => setSelectedRiskFilter('FLAGGED')}
                 className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 cursor-pointer ${
                   selectedRiskFilter === 'FLAGGED'
-                    ? 'bg-[#504F47] text-white font-bold shadow-xs'
-                    : 'text-[#504F47] hover:text-[#44312A]'
+                    ? 'bg-[#F97316] text-white font-bold shadow-xs'
+                    : 'text-[#504F47] hover:text-[#F97316]'
                 }`}
               >
-                <span className="h-2 w-2 rounded-full bg-[#44312A]" />
+                <span className="h-2.5 w-2.5 rounded-full bg-[#F97316] border border-white shrink-0" />
                 <span>Flagged Risk ({filterCounts.flagged})</span>
               </button>
               <button
                 onClick={() => setSelectedRiskFilter('REVIEW')}
                 className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 cursor-pointer ${
                   selectedRiskFilter === 'REVIEW'
-                    ? 'bg-[#6B5145] text-white font-bold shadow-xs'
-                    : 'text-[#6B5145] hover:text-[#44312A]'
+                    ? 'bg-[#FACC15] text-[#0F172A] font-black shadow-xs'
+                    : 'text-[#504F47] hover:text-[#CA8A04]'
                 }`}
               >
-                <span className="h-2 w-2 rounded-full bg-[#6B5145]" />
+                <span className="h-2.5 w-2.5 rounded-full bg-[#FACC15] border-2 border-[#0F172A] shrink-0" />
                 <span>Needs Review ({filterCounts.review})</span>
               </button>
               <button
                 onClick={() => setSelectedRiskFilter('STANDARD')}
                 className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 cursor-pointer ${
                   selectedRiskFilter === 'STANDARD'
-                    ? 'bg-[#8C7769] text-white font-bold shadow-xs'
-                    : 'text-[#8C7769] hover:text-[#44312A]'
+                    ? 'bg-[#22C55E] text-white font-bold shadow-xs'
+                    : 'text-[#504F47] hover:text-[#16A34A]'
                 }`}
               >
-                <span className="h-2 w-2 rounded-full bg-[#8C7769]" />
+                <span className="h-2.5 w-2.5 rounded-full bg-[#22C55E] border border-white shrink-0" />
                 <span>Standard ({filterCounts.standard})</span>
               </button>
             </div>
@@ -341,23 +388,43 @@ export default function MapContainer({ loading = false }) {
             </span>
           </div>
 
-          {/* Canonical 4-Band Map Legend */}
-          <div className="flex items-center gap-3 text-[11px] font-mono shrink-0">
+          {/* Canonical 4-Band Map Legend (Exact User Requirement) */}
+          <div className="flex flex-wrap items-center gap-3 text-[11px] shrink-0 bg-white/95 px-3.5 py-1.5 rounded-xl border border-[#D8CBB6] shadow-xs">
             <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-[#44312A]" />
-              <span className="text-[#44312A] font-semibold">Priority 80–100</span>
+              <span
+                className="h-2.5 w-2.5 rounded-full border border-white shadow-xs shrink-0"
+                style={{ backgroundColor: '#22C55E' }}
+              />
+              <span className="text-[#44312A] font-bold">
+                Standard <span className="text-[#6B5145] font-mono font-normal">0–29</span>
+              </span>
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-[#504F47]" />
-              <span className="text-[#504F47] font-semibold">Flagged Risk 60–79</span>
+              <span
+                className="h-2.5 w-2.5 rounded-full border-2 border-[#0F172A] shadow-xs shrink-0"
+                style={{ backgroundColor: '#FACC15' }}
+              />
+              <span className="text-[#44312A] font-bold">
+                Needs Review <span className="text-[#6B5145] font-mono font-normal">30–59</span>
+              </span>
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-[#6B5145]" />
-              <span className="text-[#6B5145] font-semibold">Needs Review 30–59</span>
+              <span
+                className="h-2.5 w-2.5 rounded-full border border-white shadow-xs shrink-0"
+                style={{ backgroundColor: '#F97316' }}
+              />
+              <span className="text-[#44312A] font-bold">
+                Flagged Risk <span className="text-[#6B5145] font-mono font-normal">60–79</span>
+              </span>
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-[#8C7769]" />
-              <span className="text-[#8C7769] font-semibold">Standard 0–29</span>
+              <span
+                className="h-2.5 w-2.5 rounded-full border border-white shadow-xs shrink-0"
+                style={{ backgroundColor: '#EF4444' }}
+              />
+              <span className="text-[#44312A] font-bold">
+                Priority <span className="text-[#6B5145] font-mono font-normal">80–100</span>
+              </span>
             </span>
           </div>
         </div>
@@ -384,24 +451,37 @@ export default function MapContainer({ loading = false }) {
             <InitialIndiaBounds />
 
             {filteredMarkers.map((cityItem) => {
-              const icon = createRiskMarkerIcon(cityItem.risk_category, cityItem.risk_score);
-              const badgeCfg = getRiskCategoryConfig(cityItem.risk_category, cityItem.risk_score);
+              const cfg = getRiskTierConfig(cityItem.risk_score);
+              const icon = createRiskMarkerIcon(cityItem.risk_score);
 
               return (
                 <Marker
                   key={`${cityItem.constituency}-${cityItem.state}`}
                   position={[cityItem.latitude, cityItem.longitude]}
                   icon={icon}
+                  zIndexOffset={cfg.zIndexOffset}
                 >
                   {/* Compact Hover Tooltip (Requirement 8) */}
-                  <LeafletTooltip direction="top" offset={[0, -12]} opacity={0.96}>
-                    <div className="text-xs space-y-0.5 text-[#44312A] font-sans">
-                      <div className="font-bold text-sm">{cityItem.city}</div>
-                      <div className="text-[11px] font-mono text-[#504F47]">
-                        Risk Score: <strong className="text-[#44312A]">{cityItem.risk_score}</strong>
+                  <LeafletTooltip direction="top" offset={[0, -12]} opacity={0.98}>
+                    <div className="text-xs space-y-1 text-[#44312A] font-sans p-0.5">
+                      <div className="font-bold text-sm leading-tight">{cityItem.city}</div>
+                      <div className="text-[11px] font-mono flex items-center justify-between gap-3 text-[#504F47]">
+                        <span>Risk Score:</span>
+                        <strong className={`text-xs font-mono font-black ${cfg.scoreColorClass}`}>
+                          {cityItem.risk_score}
+                        </strong>
                       </div>
-                      <div className="text-[10px] font-semibold uppercase tracking-wider text-[#8C7769]">
-                        {badgeCfg.label}
+                      <div className="flex items-center gap-1.5 pt-0.5 border-t border-[#D8CBB6]/60">
+                        <span
+                          className="h-2.5 w-2.5 rounded-full shrink-0"
+                          style={{
+                            backgroundColor: cfg.color,
+                            border: cfg.tier === 'REVIEW' ? '1.5px solid #0F172A' : '1px solid #FFFFFF',
+                          }}
+                        />
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#44312A]">
+                          {cfg.label} ({cfg.range})
+                        </span>
                       </div>
                     </div>
                   </LeafletTooltip>
@@ -419,8 +499,8 @@ export default function MapContainer({ loading = false }) {
                             {cityItem.constituency}, {cityItem.state}
                           </div>
                         </div>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${badgeCfg.badgeClass}`}>
-                          {badgeCfg.label}
+                        <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border shadow-xs ${cfg.badgeClass}`}>
+                          {cfg.label}
                         </span>
                       </div>
 
@@ -430,12 +510,12 @@ export default function MapContainer({ loading = false }) {
                           <span className="text-[9px] uppercase font-mono text-[#8C7769] block font-bold">
                             Risk Engine Score
                           </span>
-                          <span className="text-lg font-black font-mono text-[#44312A]">
-                            {cityItem.risk_score} / 100
+                          <span className={`text-xl font-black font-mono ${cfg.scoreColorClass}`}>
+                            {cityItem.risk_score} <span className="text-xs font-normal text-[#8C7769]">/ 100</span>
                           </span>
                         </div>
                         <div className="text-right text-[10px] text-[#504F47]">
-                          <span className="block font-bold">Composite Evaluation</span>
+                          <span className="block font-bold">{cfg.range} Tier</span>
                           <span className="text-[9px] text-[#8C7769]">Multi-Signal Ensembled</span>
                         </div>
                       </div>
@@ -581,8 +661,8 @@ export default function MapContainer({ loading = false }) {
                     <span className="text-[10px] text-[#504F47] uppercase font-mono block font-bold">
                       Composite Risk Score
                     </span>
-                    <span className="text-2xl font-black font-mono text-[#44312A]">
-                      {activeCityForDrawer.risk_score} / 100
+                    <span className={`text-2xl font-black font-mono ${getRiskTierConfig(activeCityForDrawer.risk_score).scoreColorClass}`}>
+                      {activeCityForDrawer.risk_score} <span className="text-xs font-normal text-[#8C7769]">/ 100</span>
                     </span>
                   </div>
                   <div className="text-right">
@@ -590,14 +670,11 @@ export default function MapContainer({ loading = false }) {
                       Classification
                     </span>
                     <span
-                      className={`text-xs font-bold px-2.5 py-0.5 rounded-md border inline-block mt-0.5 ${
-                        getRiskCategoryConfig(
-                          activeCityForDrawer.risk_category,
-                          activeCityForDrawer.risk_score
-                        ).badgeClass
+                      className={`text-xs font-bold px-2.5 py-0.5 rounded-md border inline-block mt-0.5 shadow-xs ${
+                        getRiskTierConfig(activeCityForDrawer.risk_score).badgeClass
                       }`}
                     >
-                      {activeCityForDrawer.risk_category}
+                      {getRiskTierConfig(activeCityForDrawer.risk_score).label} ({getRiskTierConfig(activeCityForDrawer.risk_score).range})
                     </span>
                   </div>
                 </div>
