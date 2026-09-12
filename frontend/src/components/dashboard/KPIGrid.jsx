@@ -4,33 +4,23 @@ import {
   IndianRupee,
   Calculator,
   Users,
-  Building2,
-  MapPin,
-  TrendingUp,
   Clock,
-  PiggyBank,
-  ArrowUpRight,
-  ShieldCheck,
-  Layers,
 } from 'lucide-react';
-import Card from '../ui/Card';
 import { KPISkeleton } from '../ui/Skeleton';
 import {
   formatCroresLakhs,
   formatIndianNumber,
-  formatIndianCurrency,
 } from '../../utils/formatting';
 
 export default function KPIGrid({ dashboardData, loading = false }) {
   if (loading || !dashboardData) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-        <div className="md:col-span-6"><KPISkeleton /></div>
-        <div className="md:col-span-6"><KPISkeleton /></div>
-        <div className="md:col-span-3"><KPISkeleton /></div>
-        <div className="md:col-span-3"><KPISkeleton /></div>
-        <div className="md:col-span-3"><KPISkeleton /></div>
-        <div className="md:col-span-3"><KPISkeleton /></div>
+        <div className="md:col-span-7"><KPISkeleton /></div>
+        <div className="md:col-span-5"><KPISkeleton /></div>
+        <div className="md:col-span-4"><KPISkeleton /></div>
+        <div className="md:col-span-4"><KPISkeleton /></div>
+        <div className="md:col-span-4"><KPISkeleton /></div>
       </div>
     );
   }
@@ -145,8 +135,8 @@ export default function KPIGrid({ dashboardData, loading = false }) {
         </div>
       </div>
 
-      {/* Asymmetric Tier 2: Four High-Density Telemetry Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Asymmetric Tier 2: Three High-Density Telemetry Metric Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Tile 1: Average Cost */}
         <div className="rounded-2xl bg-white border border-[#D8CBB6] shadow-xs hover:border-[#44312A] hover:shadow-md p-4 sm:p-5 transition-all duration-200 flex flex-col justify-between">
           <div className="flex items-center justify-between">
@@ -204,26 +194,6 @@ export default function KPIGrid({ dashboardData, loading = false }) {
           </div>
           <div className="pt-2 border-t border-[#D8CBB6] text-[11px] text-[#504F47] truncate">
             {works.total_beneficiaries > 0 ? 'Reported citizen coverage' : 'Omitted in source feeds'}
-          </div>
-        </div>
-
-        {/* Tile 4: Itemized Dataset Geographic Coverage */}
-        <div className="rounded-2xl bg-white border border-[#D8CBB6] shadow-xs hover:border-[#44312A] hover:shadow-md p-4 sm:p-5 transition-all duration-200 flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#504F47]">
-              Current Ingested Works Coverage
-            </span>
-            <div className="h-7 w-7 rounded-lg bg-[#FAF7F2] border border-[#D8CBB6] flex items-center justify-center text-[#44312A]">
-              <MapPin className="h-3.5 w-3.5" />
-            </div>
-          </div>
-          <div className="my-2.5">
-            <div className="text-2xl font-black font-mono text-[#44312A] tracking-tight">
-              {works.unique_states !== null ? `${works.unique_states} States` : 'N/A'}
-            </div>
-          </div>
-          <div className="pt-2 border-t border-[#D8CBB6] text-[11px] text-[#504F47] truncate">
-            Across <span className="font-mono text-[#44312A] font-semibold">{works.unique_constituencies || 'N/A'}</span> constituencies (Itemized Dataset)
           </div>
         </div>
       </div>
