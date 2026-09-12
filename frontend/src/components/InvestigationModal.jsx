@@ -10,10 +10,7 @@ import {
   Clock,
   TrendingUp,
   Cpu,
-  Terminal,
   ShieldAlert,
-  ChevronDown,
-  ChevronUp,
   Info,
   IndianRupee,
   ExternalLink,
@@ -26,7 +23,6 @@ export default function InvestigationModal({ workId, onClose, onUpdateStatus }) 
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showToolsAudit, setShowToolsAudit] = useState(false);
 
   useEffect(() => {
     if (!workId) return;
@@ -451,39 +447,6 @@ export default function InvestigationModal({ workId, onClose, onUpdateStatus }) 
                   </ul>
                 </div>
               )}
-
-              {/* Section 6: Deterministic Tool Execution Audit Trail (Collapsible) */}
-              <div className="border border-[#D8CBB6] rounded-2xl overflow-hidden">
-                <button
-                  onClick={() => setShowToolsAudit(!showToolsAudit)}
-                  className="w-full bg-[#FAF7F2] text-[#44312A] p-3 border-b border-[#D8CBB6] flex items-center justify-between cursor-pointer hover:bg-[#E7DDCA]/50 transition"
-                >
-                  <div className="flex items-center space-x-2">
-                    <Terminal className="w-4 h-4 text-[#44312A]" />
-                    <span className="font-mono text-xs font-bold">Investigation Agent Tool Execution Trail</span>
-                  </div>
-                  <div className="flex items-center space-x-2 text-[11px] text-[#504F47]">
-                    <span>{Object.keys(result.tool_results || {}).length} Tools Executed</span>
-                    {showToolsAudit ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                  </div>
-                </button>
-
-                {showToolsAudit && (
-                  <div className="p-3 bg-white text-[#504F47] font-mono text-[11px] space-y-2 max-h-60 overflow-y-auto">
-                    {Object.entries(result.tool_results || {}).map(([toolName, toolData], tIdx) => (
-                      <div key={tIdx} className="border-b border-[#D8CBB6] pb-2 last:border-0">
-                        <div className="flex items-center space-x-2 text-[#44312A] font-bold">
-                          <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                          <span>tool::{toolName}()</span>
-                        </div>
-                        <pre className="text-[#504F47] pl-5 text-[10px] mt-1 overflow-x-auto whitespace-pre-wrap bg-[#FAF7F2] p-2 rounded-lg border border-[#D8CBB6]">
-                          {JSON.stringify(toolData, null, 2)}
-                        </pre>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
 
               {/* Statutory Disclaimer Notice */}
               <div className="p-3 bg-[#FAF7F2] rounded-xl border border-[#D8CBB6] text-[11px] text-[#504F47] flex items-start gap-2">
