@@ -4,6 +4,7 @@ import {
   TileLayer,
   Marker,
   Popup,
+  Tooltip as LeafletTooltip,
   useMap,
 } from 'react-leaflet';
 import L from 'leaflet';
@@ -15,192 +16,266 @@ import {
   ChevronRight,
   Info,
   Compass,
+  MapPin,
+  Building2,
+  TrendingUp,
+  Layers,
 } from 'lucide-react';
 import Card, { CardHeader, CardTitle, CardDescription, CardContent } from '../ui/Card';
 import Badge from '../ui/Badge';
-import { getWorks } from '../../services/api';
+import { fetchCityRisks } from '../../services/api';
 import { formatCroresLakhs } from '../../utils/formatting';
-import { RISK_DISCLAIMER, getRiskBadgeConfig } from '../../utils/riskLanguage';
+import { RISK_DISCLAIMER } from '../../utils/riskLanguage';
 import { useRouter, Link } from '../../router/Router';
 
-// Component to dynamically fit map bounds to valid project pins
-function FitBoundsToMarkers({ markers }) {
+// Geographic bounds of India (strictly mainland + islands)
+// Latitude: 8.0°N to 36.5°N, Longitude: 68.0°E to 97.5°E
+const INDIA_BOUNDS = [
+  [8.0, 68.0],
+  [36.5, 97.5],
+];
+
+// Component to ensure initial map viewport fits India on load
+function InitialIndiaBounds() {
   const map = useMap();
-  const prevCountRef = useRef(0);
+  const fittedRef = useRef(false);
 
   useEffect(() => {
-    if (markers.length > 0 && markers.length !== prevCountRef.current) {
-      prevCountRef.current = markers.length;
+    if (!fittedRef.current && map) {
+      fittedRef.current = true;
       try {
-        const bounds = L.latLngBounds(markers.map((m) => [m.lat, m.lng]));
-        if (bounds.isValid()) {
-          map.fitBounds(bounds, {
-            padding: [45, 45],
-            maxZoom: 12,
-            animate: true,
-          });
-        }
-      } catch (e) {
-        console.warn('Map fitBounds error:', e);
+        map.fitBounds(INDIA_BOUNDS, {
+          padding: [25, 25],
+          animate: false,
+        });
+      } catch (err) {
+        console.warn('Initial India bounds fit failed:', err);
       }
     }
-  }, [markers, map]);
+  }, [map]);
 
   return null;
 }
 
-// Custom Leaflet SVG DivIcon generator strictly using Cream #E7DDCA & Dark Brown #44312A
-function createCustomMarkerIcon(riskLevel) {
-  const norm = String(riskLevel || '').toLowerCase();
-  let fillColor = '#8C7769'; // Muted Taupe (Standard)
-  let ringColor = 'rgba(140, 119, 105, 0.35)';
+// Visual Risk Color Configuration (Exact Bright High-Contrast Scheme)
+// 🟢 LOW / STANDARD (0–29): Bright Green #22C55E
+// 🟡 NEEDS REVIEW (30–59): Bright Yellow #FACC15 (with dark border for high contrast)
+// 🟠 FLAGGED RISK (60–79): Bright Orange #F97316
+// 🔴 PRIORITY / CRITICAL (80–100): Bright Red #EF4444 (most visually prominent)
+export function getRiskTierConfig(score) {
+  const numericScore = typeof score === 'number' ? score : parseFloat(score) || 0;
 
-  if (norm === 'critical' || norm.includes('anomalous') || norm.includes('priority')) {
-    fillColor = '#44312A'; // Deep Dark Brown (Critical)
-    ringColor = 'rgba(68, 49, 42, 0.45)';
-  } else if (norm === 'high' || norm.includes('flagged')) {
-    fillColor = '#504F47'; // Charcoal Taupe (High)
-    ringColor = 'rgba(80, 79, 71, 0.4)';
-  } else if (norm === 'medium' || norm.includes('review')) {
-    fillColor = '#6B5145'; // Warm Mocha (Needs Review)
-    ringColor = 'rgba(107, 81, 69, 0.35)';
+  if (numericScore >= 80) {
+    return {
+      tier: 'PRIORITY',
+      label: 'Priority',
+      range: '80–100',
+      color: '#EF4444', // Bright Red
+      ringColor: 'rgba(239, 68, 68, 0.40)',
+      dotSize: 16,
+      ringSize: 30,
+      borderStyle:
+        'border: 2.5px solid #FFFFFF; box-shadow: 0 0 0 1.5px #B91C1C, 0 3px 12px rgba(239, 68, 68, 0.75), 0 2px 5px rgba(0,0,0,0.5);',
+      pulseAnimation: 'animation: riskPulseRed 1.6s infinite ease-in-out;',
+      badgeClass: 'bg-[#EF4444] text-white border-[#DC2626]',
+      dotBg: 'bg-[#EF4444]',
+      zIndexOffset: 1000,
+      scoreColorClass: 'text-[#EF4444]',
+      iconEmoji: '🔴',
+    };
   }
 
+  if (numericScore >= 60) {
+    return {
+      tier: 'FLAGGED',
+      label: 'Flagged Risk',
+      range: '60–79',
+      color: '#F97316', // Bright Orange
+      ringColor: 'rgba(249, 115, 22, 0.38)',
+      dotSize: 14,
+      ringSize: 26,
+      borderStyle:
+        'border: 2px solid #FFFFFF; box-shadow: 0 0 0 1.5px #C2410C, 0 2px 10px rgba(249, 115, 22, 0.65), 0 2px 4px rgba(0,0,0,0.4);',
+      pulseAnimation: 'animation: riskPulseOrange 2.2s infinite ease-in-out;',
+      badgeClass: 'bg-[#F97316] text-white border-[#EA580C]',
+      dotBg: 'bg-[#F97316]',
+      zIndexOffset: 600,
+      scoreColorClass: 'text-[#F97316]',
+      iconEmoji: '🟠',
+    };
+  }
+
+  if (numericScore >= 30) {
+    return {
+      tier: 'REVIEW',
+      label: 'Needs Review',
+      range: '30–59',
+      color: '#FACC15', // Bright Yellow
+      ringColor: 'rgba(250, 204, 21, 0.40)',
+      dotSize: 13,
+      ringSize: 22,
+      // Dark slate border for high contrast readability against light map background
+      borderStyle:
+        'border: 2.5px solid #0F172A; box-shadow: 0 0 0 1.5px #FFFFFF, 0 2px 8px rgba(0,0,0,0.45);',
+      pulseAnimation: '',
+      badgeClass: 'bg-[#FACC15] text-[#0F172A] border-[#EAB308] font-black',
+      dotBg: 'bg-[#FACC15]',
+      zIndexOffset: 300,
+      scoreColorClass: 'text-[#CA8A04]',
+      iconEmoji: '🟡',
+    };
+  }
+
+  return {
+    tier: 'STANDARD',
+    label: 'Standard',
+    range: '0–29',
+    color: '#22C55E', // Bright Green
+    ringColor: 'rgba(34, 197, 94, 0.32)',
+    dotSize: 12,
+    ringSize: 20,
+    borderStyle:
+      'border: 2px solid #FFFFFF; box-shadow: 0 0 0 1.5px #15803D, 0 2px 8px rgba(34, 197, 94, 0.6), 0 2px 4px rgba(0,0,0,0.35);',
+    pulseAnimation: '',
+    badgeClass: 'bg-[#22C55E] text-white border-[#16A34A]',
+    dotBg: 'bg-[#22C55E]',
+    zIndexOffset: 100,
+    scoreColorClass: 'text-[#16A34A]',
+    iconEmoji: '🟢',
+  };
+}
+
+// Custom Leaflet DivIcon generator dynamically driven by actual 0-100 risk score
+function createRiskMarkerIcon(score) {
+  const cfg = getRiskTierConfig(score);
+
   const html = `
-    <div style="position: relative; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;">
-      <div style="position: absolute; width: 24px; height: 24px; border-radius: 50%; background-color: ${ringColor}; animation: pulse 2s infinite;"></div>
-      <div style="width: 14px; height: 14px; border-radius: 50%; background-color: ${fillColor}; border: 2px solid #FFFFFF; box-shadow: 0 2px 6px rgba(68,49,42,0.35);"></div>
+    <div style="position: relative; width: ${cfg.ringSize}px; height: ${cfg.ringSize}px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+      <div style="position: absolute; width: ${cfg.ringSize}px; height: ${cfg.ringSize}px; border-radius: 50%; background-color: ${cfg.ringColor}; ${cfg.pulseAnimation} pointer-events: none;"></div>
+      <div style="position: relative; width: ${cfg.dotSize}px; height: ${cfg.dotSize}px; border-radius: 50%; background-color: ${cfg.color}; ${cfg.borderStyle}"></div>
     </div>
   `;
 
   return L.divIcon({
-    className: 'custom-leaflet-risk-pin',
+    className: 'custom-city-risk-pin',
     html: html,
-    iconSize: [28, 28],
-    iconAnchor: [14, 14],
-    popupAnchor: [0, -14],
+    iconSize: [cfg.ringSize, cfg.ringSize],
+    iconAnchor: [cfg.ringSize / 2, cfg.ringSize / 2],
+    popupAnchor: [0, -(cfg.ringSize / 2)],
   });
 }
 
-export default function MapContainer({ worksData: propWorks = null, loading = false }) {
-  const [works, setWorks] = useState([]);
+
+export default function MapContainer({ loading = false }) {
+  const [citiesData, setCitiesData] = useState([]);
   const [fetching, setFetching] = useState(false);
   const [selectedRiskFilter, setSelectedRiskFilter] = useState('ALL');
-  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('ALL');
-  const [activeWorkForDrawer, setActiveWorkForDrawer] = useState(null);
+  const [selectedStateFilter, setSelectedStateFilter] = useState('ALL');
+  const [activeCityForDrawer, setActiveCityForDrawer] = useState(null);
+  const [metaStats, setMetaStats] = useState({
+    total: 0,
+    mapped: 0,
+    unmapped: 0,
+  });
   const { navigate } = useRouter();
 
-  // Load works with geospatial coordinates if not supplied via props
+  // Load existing city-level risk scores from backend once on mount
   useEffect(() => {
-    if (propWorks && Array.isArray(propWorks) && propWorks.length > 0) {
-      setWorks(propWorks);
-      return;
-    }
+    let isMounted = true;
 
-    const fetchMapWorks = async () => {
+    const loadCityRiskData = async () => {
       setFetching(true);
       try {
-        const response = await getWorks({ limit: 100 });
-        if (response?.items && Array.isArray(response.items)) {
-          setWorks(response.items);
+        const response = await fetchCityRisks();
+        if (isMounted && response?.cities && Array.isArray(response.cities)) {
+          setCitiesData(response.cities);
+          setMetaStats({
+            total: response.total_cities || response.cities.length,
+            mapped: response.mapped_cities_count || response.cities.filter((c) => c.has_coordinates).length,
+            unmapped: response.unmapped_cities_count || response.cities.filter((c) => !c.has_coordinates).length,
+          });
         }
       } catch (err) {
-        console.warn('Failed to fetch works for map:', err);
+        console.warn('Failed to fetch city risk intelligence:', err);
       } finally {
-        setFetching(false);
+        if (isMounted) setFetching(false);
       }
     };
 
-    fetchMapWorks();
-  }, [propWorks]);
+    loadCityRiskData();
 
-  // Extract and validate numerical coordinates (strict: NO fake coordinates)
-  const { validMarkers, missingGeoCount } = useMemo(() => {
-    const valid = [];
-    let missing = 0;
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
-    (works || []).forEach((w) => {
-      const rawLat = w.latitude ?? w.gps_latitude;
-      const rawLng = w.longitude ?? w.gps_longitude;
+  // Filter valid geographic markers (only cities with verified coordinates)
+  const validCityMarkers = useMemo(() => {
+    return (citiesData || []).filter(
+      (c) => c.has_coordinates && c.latitude !== null && c.longitude !== null
+    );
+  }, [citiesData]);
 
-      if (rawLat === null || rawLng === null || rawLat === undefined || rawLng === undefined || rawLat === '' || rawLng === '') {
-        missing++;
-        return;
-      }
+  // Extract unique states for optional state filter
+  const statesList = useMemo(() => {
+    const sSet = new Set();
+    validCityMarkers.forEach((c) => {
+      if (c.state && c.state !== 'Unknown') sSet.add(c.state);
+    });
+    return Array.from(sSet).sort();
+  }, [validCityMarkers]);
 
-      const lat = Number(rawLat);
-      const lng = Number(rawLng);
+  // Counts for each filter tab based on dynamic 0-100 risk score
+  const filterCounts = useMemo(() => {
+    let priority = 0;
+    let flagged = 0;
+    let review = 0;
+    let standard = 0;
 
-      // Validate realistic coordinate ranges and exclude (0, 0)
-      if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180 && !(lat === 0 && lng === 0)) {
-        let riskLevel = w.risk_level || 'Low';
-        const score = Number(w.overall_score || 0);
-        if (!w.risk_level && score > 0) {
-          if (score >= 80) riskLevel = 'Critical';
-          else if (score >= 60) riskLevel = 'High';
-          else if (score >= 35) riskLevel = 'Medium';
-          else riskLevel = 'Low';
-        }
-
-        valid.push({
-          id: w.id,
-          work_id: w.work_id || w.id,
-          lat,
-          lng,
-          description: w.work_description || 'Completed Infrastructure Work',
-          category: w.category || 'General',
-          cost: w.cost,
-          constituency: w.constituency || 'N/A',
-          district: w.district || 'N/A',
-          state: w.state || 'N/A',
-          mp_name: w.mp_name || 'N/A',
-          house: w.house || 'Lok Sabha',
-          implementing_agency: w.implementing_agency || null,
-          completion_date: w.completion_date,
-          beneficiaries: w.beneficiaries,
-          risk_level: riskLevel,
-          overall_score: score,
-          flags: w.flags || [],
-          raw: w,
-        });
-      } else {
-        missing++;
-      }
+    validCityMarkers.forEach((c) => {
+      const score = Number(c.risk_score || 0);
+      if (score >= 80) priority++;
+      else if (score >= 60) flagged++;
+      else if (score >= 30) review++;
+      else standard++;
     });
 
-    return { validMarkers: valid, missingGeoCount: missing };
-  }, [works]);
+    return {
+      all: validCityMarkers.length,
+      priority,
+      flagged,
+      review,
+      standard,
+    };
+  }, [validCityMarkers]);
 
-  // Extract unique categories for filter
-  const categories = useMemo(() => {
-    const cats = new Set();
-    validMarkers.forEach((m) => {
-      if (m.category) cats.add(m.category);
-    });
-    return Array.from(cats);
-  }, [validMarkers]);
-
-  // Filter markers based on selected risk and category
+  // Apply user-selected filters
   const filteredMarkers = useMemo(() => {
-    return validMarkers.filter((m) => {
-      if (selectedRiskFilter === 'FLAGGED' && !(m.risk_level === 'Critical' || m.risk_level === 'High')) {
+    return validCityMarkers.filter((m) => {
+      const score = Number(m.risk_score || 0);
+
+      // Risk level filter driven by dynamic score
+      if (selectedRiskFilter === 'PRIORITY') {
+        if (score < 80) return false;
+      } else if (selectedRiskFilter === 'FLAGGED') {
+        if (score < 60 || score >= 80) return false;
+      } else if (selectedRiskFilter === 'REVIEW') {
+        if (score < 30 || score >= 60) return false;
+      } else if (selectedRiskFilter === 'STANDARD') {
+        if (score >= 30) return false;
+      }
+
+      // State filter
+      if (selectedStateFilter !== 'ALL' && m.state !== selectedStateFilter) {
         return false;
       }
-      if (selectedRiskFilter === 'REVIEW' && m.risk_level !== 'Medium') {
-        return false;
-      }
-      if (selectedRiskFilter === 'STANDARD' && m.risk_level !== 'Low') {
-        return false;
-      }
-      if (selectedCategoryFilter !== 'ALL' && m.category !== selectedCategoryFilter) {
-        return false;
-      }
+
       return true;
     });
-  }, [validMarkers, selectedRiskFilter, selectedCategoryFilter]);
+  }, [validCityMarkers, selectedRiskFilter, selectedStateFilter]);
 
   // Default geographical center of India
-  const indiaCenter = [22.9734, 78.6569];
+  const indiaCenter = [22.8, 79.5];
 
   return (
     <Card className="overflow-hidden relative">
@@ -211,72 +286,85 @@ export default function MapContainer({ worksData: propWorks = null, loading = fa
               <Compass className="h-4 w-4 text-[#44312A]" />
               <CardTitle>Geospatial Project Intelligence Map</CardTitle>
               <Badge variant="primary" size="sm" dot>
-                GIS LAYER
+                INDIA GIS LAYER
               </Badge>
             </div>
             <CardDescription>
-              Interactive OpenStreetMap GIS visualization with verified GPS coordinates and risk-stratified pinpoints.
+              Interactive OpenStreetMap GIS visualization plotting verified city-level composite risk scores from the JanDrishti Risk Engine.
             </CardDescription>
           </div>
 
-          {/* Filter Bar Controls */}
+          {/* Filter Controls Bar */}
           <div className="flex flex-wrap items-center gap-2">
-            {/* Risk Filter Buttons */}
-            <div className="flex items-center p-0.5 rounded-xl bg-[#FAF7F2] border border-[#D8CBB6] text-xs font-semibold">
+            {/* Risk Category Filter Buttons */}
+            <div className="flex flex-wrap items-center p-0.5 rounded-xl bg-[#FAF7F2] border border-[#D8CBB6] text-xs font-semibold">
               <button
                 onClick={() => setSelectedRiskFilter('ALL')}
-                className={`px-2.5 py-1 rounded-lg transition ${
+                className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
                   selectedRiskFilter === 'ALL'
                     ? 'bg-[#44312A] text-white shadow-xs'
                     : 'text-[#504F47] hover:text-[#44312A]'
                 }`}
               >
-                All ({validMarkers.length})
+                All ({filterCounts.all})
+              </button>
+              <button
+                onClick={() => setSelectedRiskFilter('PRIORITY')}
+                className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 cursor-pointer ${
+                  selectedRiskFilter === 'PRIORITY'
+                    ? 'bg-[#EF4444] text-white font-bold shadow-xs'
+                    : 'text-[#504F47] hover:text-[#EF4444]'
+                }`}
+              >
+                <span className="h-2.5 w-2.5 rounded-full bg-[#EF4444] border border-white shrink-0" />
+                <span>Priority ({filterCounts.priority})</span>
               </button>
               <button
                 onClick={() => setSelectedRiskFilter('FLAGGED')}
-                className={`px-2.5 py-1 rounded-lg transition flex items-center gap-1 ${
+                className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 cursor-pointer ${
                   selectedRiskFilter === 'FLAGGED'
-                    ? 'bg-[#504F47] text-white font-bold shadow-xs'
-                    : 'text-[#504F47] hover:text-[#44312A]'
+                    ? 'bg-[#F97316] text-white font-bold shadow-xs'
+                    : 'text-[#504F47] hover:text-[#F97316]'
                 }`}
               >
-                <span className="h-1.5 w-1.5 rounded-full bg-[#44312A]" />
-                <span>Flagged Risk</span>
+                <span className="h-2.5 w-2.5 rounded-full bg-[#F97316] border border-white shrink-0" />
+                <span>Flagged Risk ({filterCounts.flagged})</span>
               </button>
               <button
                 onClick={() => setSelectedRiskFilter('REVIEW')}
-                className={`px-2.5 py-1 rounded-lg transition ${
+                className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 cursor-pointer ${
                   selectedRiskFilter === 'REVIEW'
-                    ? 'bg-[#6B5145] text-white font-bold shadow-xs'
-                    : 'text-[#6B5145] hover:text-[#44312A]'
+                    ? 'bg-[#FACC15] text-[#0F172A] font-black shadow-xs'
+                    : 'text-[#504F47] hover:text-[#CA8A04]'
                 }`}
               >
-                Needs Review
+                <span className="h-2.5 w-2.5 rounded-full bg-[#FACC15] border-2 border-[#0F172A] shrink-0" />
+                <span>Needs Review ({filterCounts.review})</span>
               </button>
               <button
                 onClick={() => setSelectedRiskFilter('STANDARD')}
-                className={`px-2.5 py-1 rounded-lg transition ${
+                className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 cursor-pointer ${
                   selectedRiskFilter === 'STANDARD'
-                    ? 'bg-[#8C7769] text-white font-bold shadow-xs'
-                    : 'text-[#8C7769] hover:text-[#44312A]'
+                    ? 'bg-[#22C55E] text-white font-bold shadow-xs'
+                    : 'text-[#504F47] hover:text-[#16A34A]'
                 }`}
               >
-                Standard
+                <span className="h-2.5 w-2.5 rounded-full bg-[#22C55E] border border-white shrink-0" />
+                <span>Standard ({filterCounts.standard})</span>
               </button>
             </div>
 
-            {/* Category Dropdown */}
-            {categories.length > 0 && (
+            {/* State Filter Dropdown */}
+            {statesList.length > 0 && (
               <select
-                value={selectedCategoryFilter}
-                onChange={(e) => setSelectedCategoryFilter(e.target.value)}
-                className="px-2.5 py-1.5 text-xs bg-[#FAF7F2] border border-[#D8CBB6] rounded-xl text-[#44312A] focus:outline-none focus:border-[#44312A]"
+                value={selectedStateFilter}
+                onChange={(e) => setSelectedStateFilter(e.target.value)}
+                className="px-3 py-1.5 text-xs bg-[#FAF7F2] border border-[#D8CBB6] rounded-xl text-[#44312A] font-medium focus:outline-none focus:border-[#44312A] cursor-pointer"
               >
-                <option value="ALL">All Categories</option>
-                {categories.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
+                <option value="ALL">All States ({statesList.length})</option>
+                {statesList.map((st) => (
+                  <option key={st} value={st}>
+                    {st}
                   </option>
                 ))}
               </select>
@@ -286,49 +374,71 @@ export default function MapContainer({ worksData: propWorks = null, loading = fa
       </CardHeader>
 
       <CardContent className="p-0 relative">
-        {/* Verification & Transparency Banner */}
-        <div className="bg-[#FAF7F2] border-y border-[#D8CBB6] px-4 py-2.5 text-xs text-[#504F47] flex flex-wrap items-center justify-between gap-2">
+        {/* Data Quality & Transparency Banner */}
+        <div className="bg-[#FAF7F2] border-y border-[#D8CBB6] px-4 py-2.5 text-xs text-[#504F47] flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <Info className="h-3.5 w-3.5 text-[#44312A] shrink-0" />
+            <Info className="h-4 w-4 text-[#44312A] shrink-0" />
             <span>
-              {validMarkers.length > 0 ? (
-                <>
-                  Plotting <strong className="text-[#44312A]">{filteredMarkers.length}</strong> works with verified numerical coordinates.
-                  {missingGeoCount > 0 && (
-                    <span className="text-[#8C7769] ml-1">
-                      ({missingGeoCount} works without coordinates are excluded per data integrity rules.)
-                    </span>
-                  )}
-                </>
-              ) : (
-                <>
-                  <strong className="text-[#44312A]">No verified GPS coordinates available:</strong> Current official MPLADS records provide textual administrative locations but no numerical latitude/longitude coordinates. Projects are therefore excluded from map plotting rather than assigned synthetic locations.
-                </>
+              Plotting <strong className="text-[#44312A]">{filteredMarkers.length}</strong> cities across India with verified geographic coordinates and multi-signal risk evaluations.
+              {metaStats.unmapped > 0 && (
+                <span className="text-[#8C7769] ml-1">
+                  ({metaStats.unmapped} non-geographic records such as Sitting Rajya Sabha excluded from map plotting per zero-fabrication data policy.)
+                </span>
               )}
             </span>
           </div>
 
-          <div className="flex items-center gap-3 text-[11px] font-mono">
+          {/* Canonical 4-Band Map Legend (Exact User Requirement) */}
+          <div className="flex flex-wrap items-center gap-3 text-[11px] shrink-0 bg-white/95 px-3.5 py-1.5 rounded-xl border border-[#D8CBB6] shadow-xs">
             <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-[#44312A]" />
-              <span className="text-[#44312A] font-medium">Priority Review</span>
+              <span
+                className="h-2.5 w-2.5 rounded-full border border-white shadow-xs shrink-0"
+                style={{ backgroundColor: '#22C55E' }}
+              />
+              <span className="text-[#44312A] font-bold">
+                Standard <span className="text-[#6B5145] font-mono font-normal">0–29</span>
+              </span>
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-[#504F47]" />
-              <span className="text-[#504F47] font-medium">Flagged Risk</span>
+              <span
+                className="h-2.5 w-2.5 rounded-full border-2 border-[#0F172A] shadow-xs shrink-0"
+                style={{ backgroundColor: '#FACC15' }}
+              />
+              <span className="text-[#44312A] font-bold">
+                Needs Review <span className="text-[#6B5145] font-mono font-normal">30–59</span>
+              </span>
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-[#8C7769]" />
-              <span className="text-[#8C7769] font-medium">Standard</span>
+              <span
+                className="h-2.5 w-2.5 rounded-full border border-white shadow-xs shrink-0"
+                style={{ backgroundColor: '#F97316' }}
+              />
+              <span className="text-[#44312A] font-bold">
+                Flagged Risk <span className="text-[#6B5145] font-mono font-normal">60–79</span>
+              </span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span
+                className="h-2.5 w-2.5 rounded-full border border-white shadow-xs shrink-0"
+                style={{ backgroundColor: '#EF4444' }}
+              />
+              <span className="text-[#44312A] font-bold">
+                Priority <span className="text-[#6B5145] font-mono font-normal">80–100</span>
+              </span>
             </span>
           </div>
         </div>
 
-        {/* Leaflet Map Canvas */}
-        <div className="h-[460px] sm:h-[540px] w-full relative z-0">
+        {/* Leaflet Map Canvas - India Centered */}
+        <div className="h-[480px] sm:h-[560px] w-full relative z-0">
           <LeafletMap
             center={indiaCenter}
             zoom={5}
+            minZoom={4}
+            maxBounds={[
+              [5.0, 65.0],
+              [38.5, 100.0],
+            ]}
             scrollWheelZoom={true}
             className="h-full w-full"
           >
@@ -337,61 +447,171 @@ export default function MapContainer({ worksData: propWorks = null, loading = fa
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
 
-            <FitBoundsToMarkers markers={filteredMarkers} />
+            {/* Automatically sets initial viewport to India bounds */}
+            <InitialIndiaBounds />
 
-            {filteredMarkers.map((marker) => {
-              const icon = createCustomMarkerIcon(marker.risk_level);
-              const costFormatted = formatCroresLakhs(marker.cost);
-              const badgeCfg = getRiskBadgeConfig(marker.risk_level);
+            {filteredMarkers.map((cityItem) => {
+              const cfg = getRiskTierConfig(cityItem.risk_score);
+              const icon = createRiskMarkerIcon(cityItem.risk_score);
 
               return (
                 <Marker
-                  key={marker.id}
-                  position={[marker.lat, marker.lng]}
+                  key={`${cityItem.constituency}-${cityItem.state}`}
+                  position={[cityItem.latitude, cityItem.longitude]}
                   icon={icon}
+                  zIndexOffset={cfg.zIndexOffset}
                 >
-                  <Popup className="custom-jandrishti-popup" minWidth={260}>
-                    <div className="p-3 space-y-2 text-[#44312A]">
+                  {/* Compact Hover Tooltip (Requirement 8) */}
+                  <LeafletTooltip direction="top" offset={[0, -12]} opacity={0.98}>
+                    <div className="text-xs space-y-1 text-[#44312A] font-sans p-0.5">
+                      <div className="font-bold text-sm leading-tight">{cityItem.city}</div>
+                      <div className="text-[11px] font-mono flex items-center justify-between gap-3 text-[#504F47]">
+                        <span>Risk Score:</span>
+                        <strong className={`text-xs font-mono font-black ${cfg.scoreColorClass}`}>
+                          {cityItem.risk_score}
+                        </strong>
+                      </div>
+                      <div className="flex items-center gap-1.5 pt-0.5 border-t border-[#D8CBB6]/60">
+                        <span
+                          className="h-2.5 w-2.5 rounded-full shrink-0"
+                          style={{
+                            backgroundColor: cfg.color,
+                            border: cfg.tier === 'REVIEW' ? '1.5px solid #0F172A' : '1px solid #FFFFFF',
+                          }}
+                        />
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#44312A]">
+                          {cfg.label} ({cfg.range})
+                        </span>
+                      </div>
+                    </div>
+                  </LeafletTooltip>
+
+                  {/* Comprehensive Interactive Popup Card (Requirement 4) */}
+                  <Popup className="custom-jandrishti-popup" minWidth={280} maxWidth={320}>
+                    <div className="p-2.5 space-y-2.5 text-[#44312A]">
                       {/* Header */}
                       <div className="flex items-center justify-between border-b border-[#D8CBB6] pb-1.5">
-                        <span className="font-mono text-xs font-bold text-[#44312A] bg-[#E7DDCA] px-1.5 py-0.5 rounded border border-[#D8CBB6]">
-                          WORK ID #{marker.work_id}
-                        </span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${badgeCfg.colorClass}`}>
-                          {badgeCfg.label}
+                        <div>
+                          <div className="font-bold text-sm text-[#44312A] leading-snug">
+                            {cityItem.city}
+                          </div>
+                          <div className="text-[10px] text-[#8C7769]">
+                            {cityItem.constituency}, {cityItem.state}
+                          </div>
+                        </div>
+                        <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border shadow-xs ${cfg.badgeClass}`}>
+                          {cfg.label}
                         </span>
                       </div>
 
-                      {/* Description */}
-                      <p className="font-bold text-xs text-[#44312A] line-clamp-2 leading-tight">
-                        {marker.description}
-                      </p>
-
-                      {/* Details Grid */}
-                      <div className="grid grid-cols-2 gap-1.5 text-[11px] bg-[#FAF7F2] p-2 rounded-xl border border-[#D8CBB6]">
+                      {/* Risk Score Highlight */}
+                      <div className="flex items-center justify-between p-2 rounded-xl bg-[#FAF7F2] border border-[#D8CBB6]">
                         <div>
-                          <span className="text-[#504F47] block text-[10px]">Location</span>
-                          <strong className="text-[#44312A]">{marker.constituency}</strong>
-                          <div className="text-[10px] text-[#504F47]">{marker.state}</div>
-                        </div>
-                        <div>
-                          <span className="text-[#504F47] block text-[10px]">Completed Cost</span>
-                          <strong className="text-[#44312A] font-mono text-xs block font-bold">
-                            {costFormatted.compact}
-                          </strong>
-                          <span className="text-[9px] text-[#504F47] font-mono">
-                            {costFormatted.exact}
+                          <span className="text-[9px] uppercase font-mono text-[#8C7769] block font-bold">
+                            Risk Engine Score
+                          </span>
+                          <span className={`text-xl font-black font-mono ${cfg.scoreColorClass}`}>
+                            {cityItem.risk_score} <span className="text-xs font-normal text-[#8C7769]">/ 100</span>
                           </span>
                         </div>
+                        <div className="text-right text-[10px] text-[#504F47]">
+                          <span className="block font-bold">{cfg.range} Tier</span>
+                          <span className="text-[9px] text-[#8C7769]">Multi-Signal Ensembled</span>
+                        </div>
                       </div>
+
+                      {/* Available Real Metrics Grid (Zero fabrication of missing values) */}
+                      <div className="grid grid-cols-2 gap-1.5 text-[11px] bg-[#FAF7F2] p-2 rounded-xl border border-[#D8CBB6]">
+                        {cityItem.projects_count !== null && cityItem.projects_count !== undefined && (
+                          <div>
+                            <span className="text-[#8C7769] block text-[9px] uppercase font-semibold">
+                              Tracked Projects
+                            </span>
+                            <strong className="text-[#44312A] font-mono">
+                              {cityItem.projects_count}
+                            </strong>
+                          </div>
+                        )}
+
+                        {cityItem.utilization_percentage !== null && cityItem.utilization_percentage !== undefined && (
+                          <div>
+                            <span className="text-[#8C7769] block text-[9px] uppercase font-semibold">
+                              Utilization Rate
+                            </span>
+                            <strong className="text-[#44312A] font-mono">
+                              {cityItem.utilization_percentage}%
+                            </strong>
+                          </div>
+                        )}
+
+                        {cityItem.total_spend !== null && cityItem.total_spend !== undefined && (
+                          <div>
+                            <span className="text-[#8C7769] block text-[9px] uppercase font-semibold">
+                              Project Spend
+                            </span>
+                            <strong className="text-[#44312A] font-mono text-[10px]">
+                              {formatCroresLakhs(cityItem.total_spend).compact}
+                            </strong>
+                          </div>
+                        )}
+
+                        {cityItem.allocated_amount !== null && cityItem.allocated_amount !== undefined && (
+                          <div>
+                            <span className="text-[#8C7769] block text-[9px] uppercase font-semibold">
+                              MP Allocation
+                            </span>
+                            <strong className="text-[#44312A] font-mono text-[10px]">
+                              {formatCroresLakhs(cityItem.allocated_amount).compact}
+                            </strong>
+                          </div>
+                        )}
+
+                        {cityItem.total_expenditure !== null && cityItem.total_expenditure !== undefined && !cityItem.total_spend && (
+                          <div className="col-span-2">
+                            <span className="text-[#8C7769] block text-[9px] uppercase font-semibold">
+                              Reported Expenditure
+                            </span>
+                            <strong className="text-[#44312A] font-mono text-[10px]">
+                              {formatCroresLakhs(cityItem.total_expenditure).compact}
+                            </strong>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* MP Details if available */}
+                      {cityItem.mp_name && (
+                        <div className="text-[10px] text-[#504F47] px-1">
+                          <span className="text-[#8C7769]">Member of Parliament: </span>
+                          <strong className="text-[#44312A]">{cityItem.mp_name}</strong>
+                        </div>
+                      )}
+
+                      {/* Contributing Signals if available */}
+                      {cityItem.signals && cityItem.signals.length > 0 && (
+                        <div className="space-y-1">
+                          <span className="text-[9px] uppercase font-mono text-[#8C7769] font-bold block">
+                            Active Audit Signals:
+                          </span>
+                          <div className="flex flex-wrap gap-1">
+                            {cityItem.signals.map((sig, idx) => (
+                              <span
+                                key={idx}
+                                className="px-1.5 py-0.5 rounded bg-[#FAF7F2] border border-[#D8CBB6] text-[9px] text-[#6B5145] font-medium"
+                              >
+                                {sig}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       {/* Action Button for Slide-Over Drawer */}
                       <button
-                        onClick={() => setActiveWorkForDrawer(marker)}
-                        className="w-full py-2 px-2.5 rounded-xl bg-[#44312A] hover:bg-[#34241E] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs"
+                        onClick={() => setActiveCityForDrawer(cityItem)}
+                        className="w-full py-2 px-3 rounded-xl bg-[#44312A] hover:bg-[#34241E] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs"
                       >
                         <Sparkles className="h-3 w-3 text-[#E7DDCA]" />
-                        <span>Inspect Audit Slide-Over</span>
+                        <span>Inspect City Dossier</span>
                         <ChevronRight className="h-3 w-3 text-[#E7DDCA]" />
                       </button>
                     </div>
@@ -400,46 +620,25 @@ export default function MapContainer({ worksData: propWorks = null, loading = fa
               );
             })}
           </LeafletMap>
-
-          {/* Professional Data Integrity Overlay when 0 records contain numerical GPS */}
-          {validMarkers.length === 0 && !fetching && (
-            <div className="absolute bottom-5 left-5 z-10 bg-white/95 backdrop-blur-md border border-[#D8CBB6] rounded-2xl p-4 shadow-xl text-xs text-[#44312A] max-w-md pointer-events-none space-y-1.5">
-              <div className="flex items-center justify-between gap-2">
-                <div className="font-bold flex items-center gap-1.5 text-[#44312A] text-xs">
-                  <Compass className="h-4 w-4 text-[#44312A]" />
-                  <span>No verified GPS coordinates available</span>
-                </div>
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-[#FAF7F2] text-[#44312A] border border-[#D8CBB6]">
-                  Data Quality Policy
-                </span>
-              </div>
-              <p className="text-[11px] text-[#504F47] leading-relaxed">
-                Current official MPLADS records provide textual administrative locations but no numerical latitude/longitude coordinates. Projects are therefore excluded from map plotting rather than assigned synthetic locations.
-              </p>
-              <div className="pt-1 text-[10px] text-[#8C7769] font-mono">
-                OpenStreetMap GIS Base Layer Active • Zero Geocoding Fabrication
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* Slide-Over Drawer Panel in Crisp White & Brown */}
-        {activeWorkForDrawer && (
+        {/* Slide-Over Drawer Panel for Detailed City Intelligence */}
+        {activeCityForDrawer && (
           <div className="absolute inset-y-0 right-0 w-full sm:w-[420px] bg-white border-l border-[#D8CBB6] shadow-2xl z-30 flex flex-col animate-in slide-in-from-right duration-300">
             {/* Drawer Header */}
             <div className="p-4 border-b border-[#D8CBB6] bg-[#FAF7F2] flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="font-mono text-xs font-bold text-[#44312A] bg-[#E7DDCA] px-2 py-0.5 rounded border border-[#D8CBB6]">
-                  WORK #{activeWorkForDrawer.work_id}
+                  {activeCityForDrawer.city.toUpperCase()}
                 </span>
                 <Badge variant="outline" size="sm">
-                  {activeWorkForDrawer.category}
+                  {activeCityForDrawer.state}
                 </Badge>
               </div>
               <button
-                onClick={() => setActiveWorkForDrawer(null)}
+                onClick={() => setActiveCityForDrawer(null)}
                 className="p-1.5 rounded-xl bg-white border border-[#D8CBB6] text-[#504F47] hover:text-[#44312A] transition cursor-pointer shadow-xs"
-                title="Close slide-over"
+                title="Close dossier"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -447,97 +646,136 @@ export default function MapContainer({ worksData: propWorks = null, loading = fa
 
             {/* Drawer Content */}
             <div className="p-5 space-y-5 overflow-y-auto flex-1 text-xs text-[#504F47]">
-              {/* Title & Cost Callout */}
+              {/* City Title & Risk Score Callout */}
               <div className="space-y-2">
-                <h3 className="text-sm font-bold text-[#44312A] leading-snug">
-                  {activeWorkForDrawer.description}
+                <div className="flex items-center gap-1.5 text-[#8C7769] text-xs">
+                  <MapPin className="h-3.5 w-3.5 text-[#44312A]" />
+                  <span>Constituency: {activeCityForDrawer.constituency}</span>
+                </div>
+                <h3 className="text-base font-bold text-[#44312A] leading-snug">
+                  {activeCityForDrawer.city} Parliamentary Risk Dossier
                 </h3>
+
                 <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#D8CBB6] flex items-center justify-between">
                   <div>
                     <span className="text-[10px] text-[#504F47] uppercase font-mono block font-bold">
-                      Actual Executed Cost
+                      Composite Risk Score
                     </span>
-                    <span className="text-xl font-black font-mono text-[#44312A]">
-                      {formatCroresLakhs(activeWorkForDrawer.cost).compact}
+                    <span className={`text-2xl font-black font-mono ${getRiskTierConfig(activeCityForDrawer.risk_score).scoreColorClass}`}>
+                      {activeCityForDrawer.risk_score} <span className="text-xs font-normal text-[#8C7769]">/ 100</span>
                     </span>
                   </div>
                   <div className="text-right">
                     <span className="text-[10px] text-[#504F47] uppercase font-mono block font-bold">
-                      Risk Classification
+                      Classification
                     </span>
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-md border inline-block mt-0.5 ${getRiskBadgeConfig(activeWorkForDrawer.risk_level).colorClass}`}>
-                      {getRiskBadgeConfig(activeWorkForDrawer.risk_level).label}
+                    <span
+                      className={`text-xs font-bold px-2.5 py-0.5 rounded-md border inline-block mt-0.5 shadow-xs ${
+                        getRiskTierConfig(activeCityForDrawer.risk_score).badgeClass
+                      }`}
+                    >
+                      {getRiskTierConfig(activeCityForDrawer.risk_score).label} ({getRiskTierConfig(activeCityForDrawer.risk_score).range})
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Potential Irregularity Explanations & Review Signals */}
+              {/* Signals Breakdown */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-[#504F47] flex items-center gap-1.5">
                     <AlertTriangle className="h-3.5 w-3.5 text-[#44312A]" />
-                    <span>Audit Review Signals</span>
+                    <span>Active Audit Indicators</span>
                   </span>
-                  <span className="text-[10px] font-mono text-[#504F47]">Heuristic Analysis</span>
+                  <span className="text-[10px] font-mono text-[#8C7769]">Risk Engine Signals</span>
                 </div>
-                <div className="p-3.5 rounded-2xl bg-[#F4EFE6] border border-[#D8CBB6] space-y-2 text-[#44312A] leading-relaxed">
+                <div className="p-3.5 rounded-2xl bg-[#F4EFE6] border border-[#D8CBB6] space-y-2.5 text-[#44312A] leading-relaxed">
                   <div className="font-bold text-[#44312A] text-xs">
-                    {activeWorkForDrawer.risk_level === 'Critical' || activeWorkForDrawer.risk_level === 'High'
-                      ? 'Statistical Cost Deviation & Proximity Check'
-                      : 'Standard Compliance & Documentation Verification'}
+                    {activeCityForDrawer.risk_score >= 60
+                      ? 'Elevated Variance / Outlier Detected in Peer Analysis'
+                      : 'Operational Patterns Within Expected Cohort Distribution'}
                   </div>
-                  <p className="text-[11px] text-[#504F47]">
-                    {activeWorkForDrawer.flags && activeWorkForDrawer.flags.length > 0
-                      ? `Active system indicators: ${activeWorkForDrawer.flags.join(', ')}.`
-                      : 'Project cost and timeline are being monitored against district sector averages.'}
-                  </p>
-                  <p className="text-[10px] text-[#504F47] pt-1 border-t border-[#D8CBB6] italic">
+                  {activeCityForDrawer.signals && activeCityForDrawer.signals.length > 0 ? (
+                    <ul className="space-y-1 list-disc list-inside text-[11px] text-[#504F47]">
+                      {activeCityForDrawer.signals.map((sig, idx) => (
+                        <li key={idx} className="font-medium text-[#44312A]">
+                          {sig}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-[11px] text-[#504F47]">
+                      No anomalous flags triggered. Projects and financial distributions match regional baselines.
+                    </p>
+                  )}
+                  <p className="text-[10px] text-[#8C7769] pt-1.5 border-t border-[#D8CBB6] italic">
                     {RISK_DISCLAIMER}
                   </p>
                 </div>
               </div>
 
-              {/* Administrative & MP Breakdown */}
+              {/* Administrative & Financial Breakdown */}
               <div className="space-y-2">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-[#504F47]">
-                  Administrative Scope
+                  Administrative & Financial Scope
                 </span>
                 <div className="space-y-2 p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#D8CBB6]">
+                  {activeCityForDrawer.mp_name && (
+                    <div className="flex justify-between py-1 border-b border-[#D8CBB6]">
+                      <span>Member of Parliament:</span>
+                      <strong className="text-[#44312A]">{activeCityForDrawer.mp_name}</strong>
+                    </div>
+                  )}
                   <div className="flex justify-between py-1 border-b border-[#D8CBB6]">
-                    <span>Member of Parliament:</span>
-                    <strong className="text-[#44312A]">{activeWorkForDrawer.mp_name}</strong>
+                    <span>State & Territory:</span>
+                    <span className="text-[#44312A] font-medium">{activeCityForDrawer.state}</span>
                   </div>
-                  <div className="flex justify-between py-1 border-b border-[#D8CBB6]">
-                    <span>House:</span>
-                    <span className="text-[#44312A]">{activeWorkForDrawer.house}</span>
-                  </div>
-                  <div className="flex justify-between py-1 border-b border-[#D8CBB6]">
-                    <span>Constituency & State:</span>
-                    <span className="text-[#44312A]">{activeWorkForDrawer.constituency}, {activeWorkForDrawer.state}</span>
-                  </div>
-                  <div className="flex justify-between py-1 border-b border-[#D8CBB6]">
-                    <span>Implementing Agency:</span>
-                    <span className="text-[#44312A] font-mono text-[11px]">
-                      {activeWorkForDrawer.implementing_agency || 'Unspecified in Feed'}
-                    </span>
-                  </div>
+                  {activeCityForDrawer.projects_count !== null && (
+                    <div className="flex justify-between py-1 border-b border-[#D8CBB6]">
+                      <span>Documented Works:</span>
+                      <strong className="text-[#44312A] font-mono">{activeCityForDrawer.projects_count}</strong>
+                    </div>
+                  )}
+                  {activeCityForDrawer.allocated_amount !== null && (
+                    <div className="flex justify-between py-1 border-b border-[#D8CBB6]">
+                      <span>MP Allocation:</span>
+                      <span className="text-[#44312A] font-mono font-bold">
+                        {formatCroresLakhs(activeCityForDrawer.allocated_amount).exact}
+                      </span>
+                    </div>
+                  )}
+                  {activeCityForDrawer.total_expenditure !== null && (
+                    <div className="flex justify-between py-1 border-b border-[#D8CBB6]">
+                      <span>Total Expenditure:</span>
+                      <span className="text-[#44312A] font-mono font-bold">
+                        {formatCroresLakhs(activeCityForDrawer.total_expenditure).exact}
+                      </span>
+                    </div>
+                  )}
+                  {activeCityForDrawer.utilization_percentage !== null && (
+                    <div className="flex justify-between py-1 border-b border-[#D8CBB6]">
+                      <span>Fund Utilization:</span>
+                      <span className="text-[#44312A] font-mono font-bold">
+                        {activeCityForDrawer.utilization_percentage}%
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between py-1">
                     <span>GPS Coordinates:</span>
-                    <span className="text-[#44312A] font-mono text-[11px] font-semibold">
-                      {activeWorkForDrawer.lat.toFixed(5)}, {activeWorkForDrawer.lng.toFixed(5)}
+                    <span className="text-[#44312A] font-mono text-[11px]">
+                      {activeCityForDrawer.latitude?.toFixed(4)}, {activeCityForDrawer.longitude?.toFixed(4)}
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Direct Full Dossier Navigation Link */}
+              {/* Direct Navigation to Works List */}
               <div className="pt-2">
                 <Link
-                  to={`/works/${activeWorkForDrawer.work_id}`}
+                  to={`/works?constituency=${encodeURIComponent(activeCityForDrawer.constituency)}`}
                   className="w-full py-2.5 px-4 rounded-xl bg-[#44312A] hover:bg-[#34241E] text-white font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-md shadow-[#44312A]/20"
                 >
-                  <span>Open Full Investigation Dossier</span>
+                  <span>Explore Projects in {activeCityForDrawer.city}</span>
                   <ExternalLink className="h-3.5 w-3.5 text-[#E7DDCA]" />
                 </Link>
               </div>

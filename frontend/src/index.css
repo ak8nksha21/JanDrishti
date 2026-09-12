@@ -101,3 +101,39 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #44312A;
 }
+
+/* High-contrast Geospatial Risk Markers */
+.custom-city-risk-pin {
+  background: transparent !important;
+  border: none !important;
+}
+
+@keyframes riskPulseRed {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 0.2;
+  }
+  100% {
+    transform: scale(0.85);
+    opacity: 0.85;
+  }
+}
+
+@keyframes riskPulseOrange {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.75;
+  }
+  50% {
+    transform: scale(1.32);
+    opacity: 0.15;
+  }
+  100% {
+    transform: scale(0.85);
+    opacity: 0.75;
+  }
+}

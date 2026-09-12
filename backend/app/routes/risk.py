@@ -8,7 +8,7 @@ and inspecting engine configuration under the final JanDrishti contract.
 
 import math
 import logging
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
@@ -20,6 +20,8 @@ from app.models.risk import RiskScore, Alert, SimilarWork
 from app.schemas.risk import (
     RiskWorkItem,
     RiskSummaryKPIs,
+    CityRiskItem,
+    CityRiskResponse,
     RiskEvaluationRequest,
     BatchRiskEvaluationRequest,
     RiskEvaluationResponse,
@@ -27,6 +29,7 @@ from app.schemas.risk import (
     RiskAlertsListResponse,
     RiskEngineConfigResponse,
 )
+from app.services.geo.india_cities import get_city_coordinates
 from app.services.risk.service import (
     risk_service,
     run_full_risk_pipeline,
@@ -143,6 +146,179 @@ def get_risk_summary(db: Session = Depends(get_db)):
         risk_distribution=dist,
         category_risk=cat_risk,
         top_risk_constituencies=top_constituencies
+    )
+
+
+def categorize_risk_tier(score: float) -> Tuple[str, str]:
+    """
+    Categorize 0-100 risk score into JanDrishti product tiers:
+    0–29   -> Standard / Low Risk
+    30–59  -> Needs Review / Medium Risk
+    60–79  -> Flagged Risk / High Risk
+    80–100 -> Priority Review / Critical
+    """
+    if score >= 80.0:
+        return "Priority Review", "Critical"
+    elif score >= 60.0:
+        return "Flagged Risk", "High"
+    elif score >= 30.0:
+        return "Needs Review", "Medium"
+    else:
+        return "Standard", "Low"
+
+
+@router.get("/cities", response_model=CityRiskResponse, summary="Get city-level composite risk evaluations with verified coordinates")
+def get_city_risks(db: Session = Depends(get_db)):
+    """
+    Retrieve city-level risk scores aggregated across the JanDrishti multi-source pipeline.
+    Zero synthetic or fabricated coordinates: only cities with verified geographic coordinates
+    are marked with has_coordinates=True.
+    """
+    # 1. Fetch works and risk scores
+    works = db.query(Work).all()
+    risk_scores = {r.work_id: r for r in db.query(RiskScore).all()}
+
+    # Group works by constituency
+    const_works: Dict[str, Dict[str, Any]] = {}
+    for w in works:
+        wid = get_work_id_str(w)
+        r = risk_scores.get(wid) or risk_scores.get(str(w.id))
+        score = float(r.overall_score if r else 20.0)
+        cost = float(w.cost or 0.0)
+        c_raw = (w.constituency or w.district or "").strip()
+        if not c_raw:
+            continue
+        c_key = c_raw.upper()
+        if c_key not in const_works:
+            const_works[c_key] = {
+                "constituency": c_raw,
+                "state": w.state or "Unknown",
+                "works_count": 0,
+                "total_spend": 0.0,
+                "scores": [],
+                "flags": set(),
+                "mp_name": w.mp_name or None,
+            }
+        const_works[c_key]["works_count"] += 1
+        const_works[c_key]["total_spend"] += cost
+        const_works[c_key]["scores"].append(score)
+        if r and r.flags_json:
+            for f in r.flags_json:
+                const_works[c_key]["flags"].add(f)
+
+    # 2. Fetch MP financial summaries
+    mps = db.query(MPFinancialSummary).all()
+    mp_map: Dict[str, MPFinancialSummary] = {}
+    for m in mps:
+        if m.constituency:
+            mp_map[m.constituency.strip().upper()] = m
+
+    # 3. If there are constituencies with MP data but no works, evaluate anomaly scores
+    mp_evaluations: Dict[str, Any] = {}
+    if mps:
+        try:
+            from app.services.anomaly.service import AnomalyService
+            anomaly_service = AnomalyService()
+            mp_eval_result = anomaly_service.evaluate_mps(db, limit=1000)
+            for item in mp_eval_result.get("items", []):
+                c_name = str(item.get("constituency") or "").strip().upper()
+                if c_name:
+                    mp_evaluations[c_name] = item
+        except Exception as exc:
+            logger.warning(f"Unable to run MP cohort anomaly evaluations for cities: {exc}")
+
+    # 4. Merge all unique constituencies
+    all_const_keys = set(const_works.keys()) | set(mp_map.keys())
+
+    city_items: List[CityRiskItem] = []
+    dist = {"Standard": 0, "Needs Review": 0, "Flagged Risk": 0, "Priority Review": 0}
+
+    for c_key in sorted(all_const_keys):
+        w_data = const_works.get(c_key)
+        m_data = mp_map.get(c_key)
+        mp_eval = mp_evaluations.get(c_key, {})
+
+        # Determine display names
+        constituency_display = (w_data["constituency"] if w_data else m_data.constituency) if (w_data or m_data) else c_key
+        state_display = (w_data["state"] if w_data and w_data["state"] != "Unknown" else (m_data.state if m_data else "Unknown"))
+
+        # Determine risk score and signals
+        signals_list: List[str] = []
+        if w_data and w_data["scores"]:
+            # Uses mean composite risk score of works evaluated by Risk Engine
+            risk_score = round(sum(w_data["scores"]) / len(w_data["scores"]), 1)
+            signals_list = sorted(list(w_data["flags"]))
+        elif mp_eval and mp_eval.get("anomaly_score") is not None:
+            # Uses evaluated MP anomaly score from Isolation Forest / Cohort distribution
+            risk_score = round(float(mp_eval.get("anomaly_score", 20.0)), 1)
+            if mp_eval.get("anomaly_type"):
+                for t in str(mp_eval["anomaly_type"]).split(","):
+                    clean_t = t.strip().replace("_", " ").title()
+                    if clean_t:
+                        signals_list.append(clean_t)
+        elif m_data:
+            # Basic utilization heuristic if no model scores exist
+            util = float(m_data.utilization_percentage or 50.0)
+            if util < 30.0:
+                risk_score = 65.0
+                signals_list.append("Lagging Fund Utilization")
+            elif util < 50.0:
+                risk_score = 45.0
+                signals_list.append("Below Average Utilization")
+            else:
+                risk_score = 20.0
+        else:
+            risk_score = 20.0
+
+        # Categorize into product bands (0-29, 30-59, 60-79, 80-100)
+        risk_category, risk_level = categorize_risk_tier(risk_score)
+        dist[risk_category] = dist.get(risk_category, 0) + 1
+
+        # Geocode against verified database (zero fabrication)
+        resolved_city, lat, lon = get_city_coordinates(constituency_display, state_display)
+        has_coords = (lat is not None and lon is not None)
+
+        city_name = resolved_city or constituency_display.title()
+
+        # Aggregate financial & project figures if available
+        projects_count = w_data["works_count"] if w_data else (m_data.completed_works_count if m_data else None)
+        total_spend = round(w_data["total_spend"], 2) if w_data else None
+        allocated_amount = round(float(m_data.allocated_amount), 2) if (m_data and m_data.allocated_amount is not None) else None
+        total_expenditure = round(float(m_data.total_expenditure), 2) if (m_data and m_data.total_expenditure is not None) else total_spend
+        utilization_pct = round(float(m_data.utilization_percentage), 1) if (m_data and m_data.utilization_percentage is not None) else None
+        mp_name = w_data["mp_name"] if (w_data and w_data["mp_name"]) else (m_data.mp_name if m_data else None)
+
+        city_items.append(CityRiskItem(
+            city=city_name,
+            constituency=constituency_display,
+            state=state_display,
+            risk_score=risk_score,
+            risk_level=risk_level,
+            risk_category=risk_category,
+            latitude=lat,
+            longitude=lon,
+            has_coordinates=has_coords,
+            projects_count=projects_count,
+            total_spend=total_spend,
+            allocated_amount=allocated_amount,
+            total_expenditure=total_expenditure,
+            utilization_percentage=utilization_pct,
+            signals=signals_list,
+            mp_name=mp_name,
+        ))
+
+    # Sort so higher risk and cities with works appear first
+    city_items.sort(key=lambda x: (x.has_coordinates, (x.projects_count or 0) > 0, x.risk_score), reverse=True)
+
+    mapped_count = sum(1 for c in city_items if c.has_coordinates)
+    unmapped_count = len(city_items) - mapped_count
+
+    return CityRiskResponse(
+        cities=city_items,
+        total_cities=len(city_items),
+        mapped_cities_count=mapped_count,
+        unmapped_cities_count=unmapped_count,
+        risk_distribution=dist,
     )
 
 

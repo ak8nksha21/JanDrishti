@@ -218,6 +218,30 @@ class TestRiskAPIsIntegration(unittest.TestCase):
         self.assertEqual(r_root.status_code, 200)
         self.assertEqual(r_root.json()["project"], "JanDrishti")
 
+    def test_09_get_city_risks_endpoint(self):
+        """Verify GET /api/risk/cities returns aggregated city risk data with verified coordinates."""
+        resp = self.client.get("/api/risk/cities")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertIn("cities", data)
+        self.assertIn("total_cities", data)
+        self.assertIn("mapped_cities_count", data)
+        self.assertIn("unmapped_cities_count", data)
+        self.assertIn("risk_distribution", data)
+
+        # Check seeded Varanasi work appears in city results
+        cities = {c["constituency"].upper(): c for c in data["cities"]}
+        self.assertIn("VARANASI", cities)
+        vns = cities["VARANASI"]
+        self.assertEqual(vns["city"], "Varanasi")
+        self.assertEqual(vns["state"], "Uttar Pradesh")
+        self.assertTrue(vns["has_coordinates"])
+        self.assertAlmostEqual(vns["latitude"], 25.3176, places=3)
+        self.assertAlmostEqual(vns["longitude"], 82.9739, places=3)
+        self.assertGreaterEqual(vns["risk_score"], 0.0)
+        self.assertLessEqual(vns["risk_score"], 100.0)
+        self.assertIn(vns["risk_category"], ["Standard", "Needs Review", "Flagged Risk", "Priority Review"])
+
 
 if __name__ == "__main__":
     unittest.main()
