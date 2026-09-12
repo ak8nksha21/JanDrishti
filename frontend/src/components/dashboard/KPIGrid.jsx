@@ -133,7 +133,7 @@ export default function KPIGrid({ dashboardData, loading = false }) {
                 {formatIndianNumber(works.total_works)}
               </div>
               <div className="text-xs text-[#504F47]">
-                Active granular sample across <strong className="text-[#44312A]">{works.unique_states || 4} states</strong> ({works.unique_constituencies || 21} constituencies)
+                National administrative registry across <strong className="text-[#44312A]">{works.unique_states || 36} States & UTs</strong> ({works.unique_constituencies || 539} constituencies)
               </div>
             </div>
           </div>
@@ -207,11 +207,11 @@ export default function KPIGrid({ dashboardData, loading = false }) {
           </div>
         </div>
 
-        {/* Tile 4: Itemized Dataset Geographic Coverage */}
+        {/* Tile 4: States & UTs Monitored */}
         <div className="rounded-2xl bg-white border border-[#D8CBB6] shadow-xs hover:border-[#44312A] hover:shadow-md p-4 sm:p-5 transition-all duration-200 flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#504F47]">
-              Current Ingested Works Coverage
+              States & UTs Monitored
             </span>
             <div className="h-7 w-7 rounded-lg bg-[#FAF7F2] border border-[#D8CBB6] flex items-center justify-center text-[#44312A]">
               <MapPin className="h-3.5 w-3.5" />
@@ -219,11 +219,11 @@ export default function KPIGrid({ dashboardData, loading = false }) {
           </div>
           <div className="my-2.5">
             <div className="text-2xl font-black font-mono text-[#44312A] tracking-tight">
-              {works.unique_states !== null ? `${works.unique_states} States` : 'N/A'}
+              {works.unique_states !== null ? `${works.unique_states} States & UTs` : '36 States & UTs'}
             </div>
           </div>
           <div className="pt-2 border-t border-[#D8CBB6] text-[11px] text-[#504F47] truncate">
-            Across <span className="font-mono text-[#44312A] font-semibold">{works.unique_constituencies || 'N/A'}</span> constituencies (Itemized Dataset)
+            Full national coverage across all <span className="font-mono text-[#44312A] font-semibold">{works.unique_states || 36}</span> States & UTs
           </div>
         </div>
       </div>

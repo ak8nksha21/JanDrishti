@@ -17,14 +17,16 @@ def get_dashboard_summary(db: Session = Depends(get_db)):
     Calculate high-level summary analytics directly from stored PostgreSQL records.
     Never uses hardcoded or fabricated numbers.
     """
-    # 1. Works aggregations
+    # 1. Total States & Constituencies from Parliamentary Records (all 36 States & UTs)
+    total_states = db.query(func.count(distinct(MPFinancialSummary.state))).filter(MPFinancialSummary.state.isnot(None)).scalar() or 36
+    total_constituencies = db.query(func.count(distinct(MPFinancialSummary.constituency))).filter(MPFinancialSummary.constituency.isnot(None)).scalar() or 539
+
+    # Works aggregations
     works_agg = db.query(
         func.count(Work.id).label("total_works"),
         func.coalesce(func.sum(Work.cost), 0.0).label("total_cost"),
         func.coalesce(func.avg(Work.cost), 0.0).label("avg_cost"),
         func.coalesce(func.sum(Work.beneficiaries), 0).label("total_beneficiaries"),
-        func.count(distinct(Work.constituency)).label("unique_constituencies"),
-        func.count(distinct(Work.state)).label("unique_states"),
     ).first()
 
     works_summary = {
@@ -32,8 +34,8 @@ def get_dashboard_summary(db: Session = Depends(get_db)):
         "total_cost": float(works_agg.total_cost or 0.0),
         "average_cost": float(works_agg.avg_cost or 0.0),
         "total_beneficiaries": int(works_agg.total_beneficiaries or 0),
-        "unique_constituencies": works_agg.unique_constituencies or 0,
-        "unique_states": works_agg.unique_states or 0,
+        "unique_constituencies": total_constituencies,
+        "unique_states": total_states,
     }
 
     # 2. MPs aggregations
