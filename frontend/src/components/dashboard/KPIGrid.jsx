@@ -1,26 +1,21 @@
 import React from 'react';
 import {
-  Briefcase,
   IndianRupee,
   Calculator,
-  Users,
   Clock,
 } from 'lucide-react';
 import { KPISkeleton } from '../ui/Skeleton';
-import {
-  formatCroresLakhs,
-  formatIndianNumber,
-} from '../../utils/formatting';
+import { formatCroresLakhs } from '../../utils/formatting';
 
 export default function KPIGrid({ dashboardData, loading = false }) {
   if (loading || !dashboardData) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-        <div className="md:col-span-7"><KPISkeleton /></div>
-        <div className="md:col-span-5"><KPISkeleton /></div>
-        <div className="md:col-span-4"><KPISkeleton /></div>
-        <div className="md:col-span-4"><KPISkeleton /></div>
-        <div className="md:col-span-4"><KPISkeleton /></div>
+      <div className="space-y-4">
+        <KPISkeleton />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <KPISkeleton />
+          <KPISkeleton />
+        </div>
       </div>
     );
   }
@@ -43,100 +38,57 @@ export default function KPIGrid({ dashboardData, loading = false }) {
 
   return (
     <div className="space-y-4">
-      {/* Asymmetric Tier 1: Two Featured Hero Anchor Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* Hero Card 1: Total Executed Public Outlay (7 Cols) */}
-        <div className="lg:col-span-7 rounded-2xl bg-white border border-[#D8CBB6] shadow-xs hover:border-[#44312A] hover:shadow-md p-6 sm:p-7 relative overflow-hidden transition-all duration-300 group flex flex-col justify-between">
-          <div className="absolute -top-12 -right-12 w-48 h-48 bg-[#44312A]/5 rounded-full blur-3xl pointer-events-none group-hover:bg-[#44312A]/10 transition duration-500" />
+      {/* Featured Hero Anchor Card: Total Executed Public Outlay */}
+      <div className="rounded-2xl bg-white border border-[#D8CBB6] shadow-xs hover:border-[#44312A] hover:shadow-md p-6 sm:p-7 relative overflow-hidden transition-all duration-300 group flex flex-col justify-between">
+        <div className="absolute -top-12 -right-12 w-48 h-48 bg-[#44312A]/5 rounded-full blur-3xl pointer-events-none group-hover:bg-[#44312A]/10 transition duration-500" />
 
-          <div>
-            <div className="flex items-center justify-between gap-3 mb-4">
-              <div className="flex items-center gap-2">
-                <div className="h-9 w-9 rounded-xl bg-[#E7DDCA] border border-[#D8CBB6] flex items-center justify-center text-[#44312A]">
-                  <IndianRupee className="h-5 w-5" />
-                </div>
-                <div>
-                  <span className="text-[10px] uppercase font-mono tracking-widest text-[#504F47] font-bold block">
-                    Verified Disbursements
-                  </span>
-                  <span className="text-xs font-semibold text-[#44312A]">
-                    National Financial Outlay (774 MPs)
-                  </span>
-                </div>
+        <div>
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-2">
+              <div className="h-9 w-9 rounded-xl bg-[#E7DDCA] border border-[#D8CBB6] flex items-center justify-center text-[#44312A]">
+                <IndianRupee className="h-5 w-5" />
               </div>
-              <span className="text-[10px] font-mono bg-[#FAF7F2] text-[#44312A] px-2.5 py-1 rounded-full border border-[#D8CBB6]">
-                All-India Ledger
-              </span>
-            </div>
-
-            <div className="space-y-1 my-3">
-              <div
-                className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#44312A] font-mono tracking-tight"
-                title={`Exact: ${totalExpenditure.exact}`}
-              >
-                {totalExpenditure.compact}
-              </div>
-              <div className="text-xs text-[#504F47] font-mono">
-                Exact Verified Outlay: <strong className="text-[#44312A]">{totalExpenditure.exact}</strong>
+              <div>
+                <span className="text-[10px] uppercase font-mono tracking-widest text-[#504F47] font-bold block">
+                  Verified Disbursements
+                </span>
+                <span className="text-xs font-semibold text-[#44312A]">
+                  National Financial Outlay (774 MPs)
+                </span>
               </div>
             </div>
+            <span className="text-[10px] font-mono bg-[#FAF7F2] text-[#44312A] px-2.5 py-1 rounded-full border border-[#D8CBB6]">
+              All-India Ledger
+            </span>
           </div>
 
-          <div className="pt-4 mt-2 border-t border-[#D8CBB6] flex flex-wrap items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-2 text-[#504F47]">
-              <span>Total Allocated Limit:</span>
-              <strong className="text-[#44312A] font-mono">{totalAllocated.compact}</strong>
+          <div className="space-y-1 my-3">
+            <div
+              className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#44312A] font-mono tracking-tight"
+              title={`Exact: ${totalExpenditure.exact}`}
+            >
+              {totalExpenditure.compact}
             </div>
-            <div className="flex items-center gap-2 text-[#504F47] font-mono text-[11px]">
-              <span>National Expenditure Ratio:</span>
-              <strong className="text-[#44312A] font-bold">{utilizationDisplay}</strong>
+            <div className="text-xs text-[#504F47] font-mono">
+              Exact Verified Outlay: <strong className="text-[#44312A]">{totalExpenditure.exact}</strong>
             </div>
           </div>
         </div>
 
-        {/* Hero Card 2: Physical Works Infrastructure Delivery (5 Cols) */}
-        <div className="lg:col-span-5 rounded-2xl bg-white border border-[#D8CBB6] shadow-xs hover:border-[#44312A] hover:shadow-md p-6 sm:p-7 relative overflow-hidden transition-all duration-300 group flex flex-col justify-between">
-          <div className="absolute -top-12 -right-12 w-48 h-48 bg-[#44312A]/5 rounded-full blur-3xl pointer-events-none group-hover:bg-[#44312A]/10 transition duration-500" />
-
-          <div>
-            <div className="flex items-center justify-between gap-3 mb-4">
-              <div className="flex items-center gap-2">
-                <div className="h-9 w-9 rounded-xl bg-[#E7DDCA] border border-[#D8CBB6] flex items-center justify-center text-[#44312A]">
-                  <Briefcase className="h-5 w-5" />
-                </div>
-                <div>
-                  <span className="text-[10px] uppercase font-mono tracking-widest text-[#504F47] font-bold block">
-                    Active Works Registry
-                  </span>
-                  <span className="text-xs font-semibold text-[#44312A]">
-                    Itemized Completed Works Sample
-                  </span>
-                </div>
-              </div>
-              <span className="text-[10px] font-mono bg-[#FAF7F2] text-[#44312A] px-2.5 py-1 rounded-full border border-[#D8CBB6]">
-                Granular Registry
-              </span>
-            </div>
-
-            <div className="space-y-1 my-3">
-              <div className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#44312A] font-mono tracking-tight">
-                {formatIndianNumber(works.total_works)}
-              </div>
-              <div className="text-xs text-[#504F47]">
-                Active granular sample across <strong className="text-[#44312A]">{works.unique_states || 4} states</strong> ({works.unique_constituencies || 21} constituencies)
-              </div>
-            </div>
+        <div className="pt-4 mt-2 border-t border-[#D8CBB6] flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2 text-[#504F47]">
+            <span>Total Allocated Limit:</span>
+            <strong className="text-[#44312A] font-mono">{totalAllocated.compact}</strong>
           </div>
-
-          <div className="pt-4 mt-2 border-t border-[#D8CBB6] flex items-center justify-between text-xs text-[#504F47]">
-            <span>Average Completed Work Cost:</span>
-            <strong className="text-[#44312A] font-mono">{avgCost.compact}</strong>
+          <div className="flex items-center gap-2 text-[#504F47] font-mono text-[11px]">
+            <span>National Expenditure Ratio:</span>
+            <strong className="text-[#44312A] font-bold">{utilizationDisplay}</strong>
           </div>
         </div>
       </div>
 
-      {/* Asymmetric Tier 2: Three High-Density Telemetry Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* Asymmetric Tier 2: Two High-Density Telemetry Metric Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Tile 1: Average Cost */}
         <div className="rounded-2xl bg-white border border-[#D8CBB6] shadow-xs hover:border-[#44312A] hover:shadow-md p-4 sm:p-5 transition-all duration-200 flex flex-col justify-between">
           <div className="flex items-center justify-between">
@@ -174,26 +126,6 @@ export default function KPIGrid({ dashboardData, loading = false }) {
           </div>
           <div className="pt-2 border-t border-[#D8CBB6] text-[11px] text-[#504F47] truncate">
             Pending parliamentary utilization
-          </div>
-        </div>
-
-        {/* Tile 3: Citizen Beneficiaries */}
-        <div className="rounded-2xl bg-white border border-[#D8CBB6] shadow-xs hover:border-[#44312A] hover:shadow-md p-4 sm:p-5 transition-all duration-200 flex flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#504F47]">
-              Citizen Beneficiaries
-            </span>
-            <div className="h-7 w-7 rounded-lg bg-[#FAF7F2] border border-[#D8CBB6] flex items-center justify-center text-[#44312A]">
-              <Users className="h-3.5 w-3.5" />
-            </div>
-          </div>
-          <div className="my-2.5">
-            <div className={`font-black font-mono text-[#44312A] tracking-tight ${works.total_beneficiaries > 0 ? 'text-2xl' : 'text-lg text-[#8C7769]'}`}>
-              {works.total_beneficiaries > 0 ? formatIndianNumber(works.total_beneficiaries) : 'Not Disclosed'}
-            </div>
-          </div>
-          <div className="pt-2 border-t border-[#D8CBB6] text-[11px] text-[#504F47] truncate">
-            {works.total_beneficiaries > 0 ? 'Reported citizen coverage' : 'Omitted in source feeds'}
           </div>
         </div>
       </div>

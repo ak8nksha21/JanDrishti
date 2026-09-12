@@ -8,29 +8,20 @@ import {
   Compass,
   TrendingUp,
   ChevronRight,
-  ShieldCheck,
-  Search,
-  Layers,
-  Sparkles,
   Info,
-  BarChart3,
-  CheckCircle2,
 } from 'lucide-react';
 import KPIGrid from '../components/dashboard/KPIGrid';
 import ExpenditureChart from '../components/charts/ExpenditureChart';
-import CategoryDistributionChart from '../components/charts/CategoryDistributionChart';
 import MapContainer from '../components/map/MapContainer';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import ErrorState from '../components/ui/ErrorState';
 import { getDashboard, getHealth } from '../services/api';
-import { fetchRiskSummary } from '../services/analytics';
 import { Link } from '../router/Router';
 import { RISK_DISCLAIMER } from '../utils/riskLanguage';
 
 export default function Dashboard({ onOpenSync = () => {} }) {
   const [dashboardData, setDashboardData] = useState(null);
-  const [riskSummary, setRiskSummary] = useState(null);
   const [healthStatus, setHealthStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -45,9 +36,8 @@ export default function Dashboard({ onOpenSync = () => {} }) {
     setError(null);
 
     try {
-      const [dashRes, riskRes, healthRes] = await Promise.allSettled([
+      const [dashRes, healthRes] = await Promise.allSettled([
         getDashboard(),
-        fetchRiskSummary(),
         getHealth(5000),
       ]);
 
@@ -55,10 +45,6 @@ export default function Dashboard({ onOpenSync = () => {} }) {
         setDashboardData(dashRes.value);
       } else {
         throw dashRes.reason;
-      }
-
-      if (riskRes.status === 'fulfilled') {
-        setRiskSummary(riskRes.value);
       }
 
       if (healthRes.status === 'fulfilled') {
@@ -207,17 +193,9 @@ export default function Dashboard({ onOpenSync = () => {} }) {
         <KPIGrid dashboardData={dashboardData} loading={loading} />
       </section>
 
-      {/* 3. Recharts Visual Section: Finance & Works Distribution */}
-      <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-        <div className="lg:col-span-7">
-          <ExpenditureChart dashboardData={dashboardData} loading={loading} />
-        </div>
-        <div className="lg:col-span-5">
-          <CategoryDistributionChart
-            categoryData={riskSummary?.category_risk || []}
-            loading={loading}
-          />
-        </div>
+      {/* 3. Recharts Visual Section: Parliamentary Expenditure Velocity */}
+      <section className="space-y-3">
+        <ExpenditureChart dashboardData={dashboardData} loading={loading} />
       </section>
 
       {/* 4. Geospatial Project Intelligence Map */}
