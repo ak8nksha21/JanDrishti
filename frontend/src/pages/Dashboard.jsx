@@ -91,16 +91,12 @@ export default function Dashboard({ onOpenSync = () => {} }) {
 
           {/* Display Headline */}
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#44312A] font-display tracking-tight leading-[1.15]">
-            Official public expenditure data. <br className="hidden sm:inline" />
-            <span className="text-[#6B5145]">
-              Explainable civic signals.
-            </span>
+            From public data <span className="text-[#6B5145]">→ to public understanding.</span>
           </h1>
 
           {/* Sub-headline */}
           <p className="text-sm sm:text-base text-[#504F47] font-normal leading-relaxed max-w-2xl">
-            Public expenditure data transformed into explainable risk signals for administrative review,
-            cross-referencing MoSPI/e-SAKSHI macro benchmarks with parliamentary execution records.
+            Turning public expenditure data into clear, explainable signals for better understanding and administrative review.
           </p>
         </div>
 
