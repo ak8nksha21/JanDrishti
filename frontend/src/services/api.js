@@ -367,13 +367,31 @@ export async function fetchConstituencyWorks(constituencyId, params = {}) {
   return response.data;
 }
 
-export async function fetchConstituencySignals(constituencyId) {
-  const response = await api.get(`/constituencies/${encodeURIComponent(constituencyId)}/signals`);
+/**
+ * 18. State Intelligence (GET /api/states)
+ */
+export async function fetchStates(params = {}) {
+  const response = await api.get('/states', { params });
   return response.data;
 }
 
-export async function fetchConstituencySnapshot(constituencyId) {
-  const response = await api.get(`/constituencies/${encodeURIComponent(constituencyId)}/export`);
+export async function fetchNationalSummary() {
+  const response = await api.get('/states/national-summary');
+  return response.data;
+}
+
+export async function fetchStateById(stateId) {
+  const response = await api.get(`/states/${encodeURIComponent(stateId)}`);
+  return response.data;
+}
+
+export async function fetchStateSignals(stateId) {
+  const response = await api.get(`/states/${encodeURIComponent(stateId)}/signals`);
+  return response.data;
+}
+
+export async function fetchStateExport(stateId) {
+  const response = await api.get(`/states/${encodeURIComponent(stateId)}/export`);
   return response.data;
 }
 

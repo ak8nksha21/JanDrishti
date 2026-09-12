@@ -3,13 +3,13 @@ import { Search, Briefcase, Users, Landmark, ArrowRight, X, Loader2 } from 'luci
 import { useRouter } from '../../router/Router';
 import { fetchWorks } from '../../services/works';
 import { fetchMPs } from '../../services/mps';
-import { fetchConstituencies } from '../../services/constituencies';
+import { fetchStates } from '../../services/states';
 import { formatCroresLakhs } from '../../utils/formatting';
 
 export default function GlobalSearchModal({ isOpen, onClose }) {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState({ works: [], mps: [], constituencies: [] });
+  const [results, setResults] = useState({ works: [], mps: [], states: [] });
   const inputRef = useRef(null);
   const { navigate } = useRouter();
 
@@ -18,7 +18,7 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
       setTimeout(() => inputRef.current?.focus(), 50);
     } else {
       setQuery('');
-      setResults({ works: [], mps: [], constituencies: [] });
+      setResults({ works: [], mps: [], states: [] });
     }
   }, [isOpen]);
 
@@ -41,7 +41,7 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
   useEffect(() => {
     const clean = query.trim();
     if (clean.length < 2) {
-      setResults({ works: [], mps: [], constituencies: [] });
+      setResults({ works: [], mps: [], states: [] });
       setLoading(false);
       return;
     }
@@ -49,17 +49,17 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
     const timer = setTimeout(async () => {
       setLoading(true);
       try {
-        const [worksRes, mpsRes, constRes] = await Promise.allSettled([
-          fetchWorks({ constituency: clean, limit: 4 }),
-          fetchMPs({ constituency: clean, limit: 4 }),
-          fetchConstituencies({ search: clean, limit: 4 }),
+        const [worksRes, mpsRes, statesRes] = await Promise.allSettled([
+          fetchWorks({ search: clean, limit: 4 }),
+          fetchMPs({ search: clean, limit: 4 }),
+          fetchStates({ search: clean }),
         ]);
 
         const worksList = worksRes.status === 'fulfilled' ? worksRes.value.items || [] : [];
         const mpsList = mpsRes.status === 'fulfilled' ? mpsRes.value.items || [] : [];
-        const constList = constRes.status === 'fulfilled' ? constRes.value.items || [] : [];
+        const statesList = statesRes.status === 'fulfilled' ? statesRes.value.items || [] : [];
 
-        setResults({ works: worksList, mps: mpsList, constituencies: constList });
+        setResults({ works: worksList, mps: mpsList, states: statesList.slice(0, 4) });
       } catch (err) {
         console.warn('Global search query error:', err);
       } finally {
@@ -82,14 +82,14 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
     navigate(`/mps/${mpId}`);
   };
 
-  const handleSelectConstituency = (constituencyId) => {
+  const handleSelectState = (stateId) => {
     onClose();
-    navigate(`/constituencies/${constituencyId}`);
+    navigate(`/states/${stateId}`);
   };
 
   const handleSearchAllWorks = () => {
     onClose();
-    navigate(`/works?constituency=${encodeURIComponent(query.trim())}`);
+    navigate(`/works?search=${encodeURIComponent(query.trim())}`);
   };
 
   return (
@@ -110,7 +110,7 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by constituency, MP name, or work ID..."
+            placeholder="Search by state, UT, MP name, or work description..."
             className="w-full bg-transparent text-sm text-[#44312A] placeholder-[#8C7769] focus:outline-none"
           />
           {loading && <Loader2 className="h-4 w-4 text-[#44312A] animate-spin shrink-0" />}
@@ -131,7 +131,7 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {query.trim().length < 2 && (
             <div className="py-8 text-center text-[#504F47] text-xs">
-              Type at least 2 characters to search across live constituencies, works, and MPs.
+              Type at least 2 characters to search across States, UTs, MPs, and live works.
             </div>
           )}
 
@@ -139,44 +139,40 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
             !loading &&
             results.works.length === 0 &&
             results.mps.length === 0 &&
-            results.constituencies.length === 0 && (
+            results.states.length === 0 && (
               <div className="py-8 text-center text-[#504F47] text-xs">
-                No matching records found for "{query}". Try searching a constituency like "SHAHJAHANPUR" or "Gorakhpur".
+                No matching records found for "{query}". Try searching "Uttar Pradesh" or "Maharashtra".
               </div>
             )}
 
-          {/* Constituencies Section */}
-          {results.constituencies.length > 0 && (
+          {/* States & UTs Section */}
+          {results.states.length > 0 && (
             <div>
               <div className="text-[10px] font-bold uppercase tracking-wider text-[#504F47] px-2 mb-2 flex items-center gap-1.5">
                 <Landmark className="h-3 w-3 text-[#44312A]" />
-                <span>Constituency Digital Twins ({results.constituencies.length})</span>
+                <span>States & Union Territories ({results.states.length})</span>
               </div>
               <div className="space-y-1">
-                {results.constituencies.map((c) => (
+                {results.states.map((s) => (
                   <div
-                    key={c.id}
-                    onClick={() => handleSelectConstituency(c.id)}
+                    key={s.id}
+                    onClick={() => handleSelectState(s.id)}
                     className="flex items-center justify-between p-2.5 rounded-xl hover:bg-[#E7DDCA]/50 cursor-pointer group transition border border-transparent hover:border-[#D8CBB6]"
                   >
                     <div>
                       <div className="text-xs font-bold text-[#44312A] group-hover:text-[#44312A] transition-colors flex items-center gap-2">
-                        <span>{c.constituency}</span>
+                        <span>{s.state}</span>
                         <span className="text-[10px] font-mono font-medium px-1.5 py-0.2 rounded bg-[#E7DDCA] text-[#44312A]">
-                          {c.house || 'Lok Sabha'}
+                          {s.entity_type}
                         </span>
                       </div>
                       <div className="text-[11px] text-[#504F47] flex items-center gap-2 mt-0.5">
-                        <span className="text-[#44312A] font-medium">{c.state}</span>
-                        {c.mp_name && (
-                          <>
-                            <span>•</span>
-                            <span>Rep: {c.mp_name}</span>
-                          </>
-                        )}
+                        <span className="text-[#44312A] font-medium">{s.mp_count} MPs</span>
+                        <span>•</span>
+                        <span>{s.total_works.toLocaleString()} works</span>
                         <span>•</span>
                         <span className="font-mono text-[#44312A] font-semibold">
-                          {c.utilization_pct?.toFixed(1) || '0.0'}% utilization
+                          {s.utilization_percentage.toFixed(1)}% utilization
                         </span>
                       </div>
                     </div>

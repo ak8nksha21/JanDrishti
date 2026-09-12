@@ -80,8 +80,8 @@ export default function TopNavbar({
       icon: LayoutDashboard,
     },
     {
-      label: 'Constituency Intelligence',
-      to: '/constituencies',
+      label: 'State Intelligence',
+      to: '/states',
       icon: Landmark,
     },
     {

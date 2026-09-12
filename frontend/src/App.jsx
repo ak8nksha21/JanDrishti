@@ -12,8 +12,8 @@ import WorkDetails from './pages/WorkDetails';
 import MPs from './pages/MPs';
 import MPDetails from './pages/MPDetails';
 import Analytics from './pages/Analytics';
-import Constituencies from './pages/Constituencies';
-import ConstituencyDetails from './pages/ConstituencyDetails';
+import States from './pages/States';
+import StateDetails from './pages/StateDetails';
 
 import { checkHealth } from './services/status';
 
@@ -72,12 +72,12 @@ function AppContent() {
     if (path === '/') {
       return <Dashboard onOpenSync={() => setIsSyncOpen(true)} />;
     }
-    if (path === '/constituencies' || path === '/constituencies-list') {
-      return <Constituencies />;
+    if (path === '/states' || path === '/states-list' || path === '/constituencies') {
+      return <States />;
     }
-    if (path.startsWith('/constituencies/')) {
-      const constituencyId = path.split('/')[2];
-      return <ConstituencyDetails constituencyId={constituencyId} />;
+    if (path.startsWith('/states/')) {
+      const stateId = path.split('/')[2];
+      return <StateDetails stateId={stateId} />;
     }
     if (path === '/works' || path === '/works-list') {
       return <Works />;
