@@ -38,7 +38,7 @@ export default function InvestigationSignals({ stats = null }) {
     {
       title: 'Aggregate Financial Execution Analysis',
       status: 'Active',
-      description: 'Portfolio-level financial execution analysis: comparing allocated parliamentary outlays against reported expenditures to monitor portfolio disbursement patterns (not transaction-level fraud detection).',
+      description: 'Portfolio-level financial execution analysis: comparing allocated parliamentary outlays against reported expenditures to monitor portfolio disbursement patterns (portfolio-level risk monitoring and statistical pattern analysis).',
       icon: Database,
       actionText: 'Inspect MP Ratios',
       to: '/mps',
