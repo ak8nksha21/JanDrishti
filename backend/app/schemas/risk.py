@@ -67,6 +67,33 @@ class RiskSummaryKPIs(BaseModel):
     top_risk_constituencies: List[Dict[str, Any]]
 
 
+class CityRiskItem(BaseModel):
+    city: str
+    constituency: str
+    state: str
+    risk_score: float
+    risk_level: str
+    risk_category: str
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    has_coordinates: bool = False
+    projects_count: Optional[int] = None
+    total_spend: Optional[float] = None
+    allocated_amount: Optional[float] = None
+    total_expenditure: Optional[float] = None
+    utilization_percentage: Optional[float] = None
+    signals: List[str] = []
+    mp_name: Optional[str] = None
+
+
+class CityRiskResponse(BaseModel):
+    cities: List[CityRiskItem]
+    total_cities: int
+    mapped_cities_count: int
+    unmapped_cities_count: int
+    risk_distribution: Dict[str, int]
+
+
 class EvidenceItem(BaseModel):
     """Structured evidence item supporting a detection or risk finding."""
     source: str = Field(..., description="Origin of evidence, e.g. 'duplicate_detector', 'anomaly_model'")

@@ -260,6 +260,16 @@ export async function fetchRiskSummary() {
 }
 
 /**
+ * 9.5. City Risk Evaluations (GET /api/risk/cities)
+ */
+export async function fetchCityRisks() {
+  const response = await api.get('/risk/cities');
+  return response.data;
+}
+
+export const getCityRisks = fetchCityRisks;
+
+/**
  * 10. Risk Work Detail (GET /api/risk/works/{work_id})
  */
 export async function fetchWorkDetail(workId) {
