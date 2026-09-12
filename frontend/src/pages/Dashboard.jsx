@@ -7,16 +7,26 @@ import {
   RefreshCw,
   Compass,
   TrendingUp,
+  ChevronRight,
+  ShieldCheck,
+  Search,
+  Layers,
+  Sparkles,
+  Info,
+  BarChart3,
+  CheckCircle2,
 } from 'lucide-react';
 import KPIGrid from '../components/dashboard/KPIGrid';
 import ExpenditureChart from '../components/charts/ExpenditureChart';
 import CategoryDistributionChart from '../components/charts/CategoryDistributionChart';
-import SystemHealthRiskPanel from '../components/dashboard/SystemHealthRiskPanel';
 import MapContainer from '../components/map/MapContainer';
+import Card from '../components/ui/Card';
+import Badge from '../components/ui/Badge';
 import ErrorState from '../components/ui/ErrorState';
 import { getDashboard, getHealth } from '../services/api';
 import { fetchRiskSummary } from '../services/analytics';
 import { Link } from '../router/Router';
+import { RISK_DISCLAIMER } from '../utils/riskLanguage';
 
 export default function Dashboard({ onOpenSync = () => {} }) {
   const [dashboardData, setDashboardData] = useState(null);
@@ -68,6 +78,37 @@ export default function Dashboard({ onOpenSync = () => {} }) {
   useEffect(() => {
     loadDashboardData();
   }, [loadDashboardData]);
+
+  // Civic intelligence core navigation cards
+  const intelligencePillars = [
+    {
+      icon: Briefcase,
+      title: 'Itemized Works Registry',
+      tag: '591 Granular Works',
+      description:
+        'Explore individual developmental works across 21 constituencies with reported completed costs, completion dates, and executing district metadata.',
+      link: '/works',
+      actionText: 'Explore Works Registry',
+    },
+    {
+      icon: Users,
+      title: 'MP Performance Dossiers',
+      tag: '774 MPs Nationwide',
+      description:
+        'Review nationwide parliamentary financial ledgers, expenditure utilization ratios, unspent balances, and 5-factor portfolio risk breakdowns.',
+      link: '/mps',
+      actionText: 'Inspect MP Dossiers',
+    },
+    {
+      icon: TrendingUp,
+      title: 'Implementation Analytics',
+      tag: 'Temporal & Cost Suite',
+      description:
+        'Analyze project cost distributions, parliamentary utilization tiers, official MoSPI benchmarks, and quarterly project completion velocity.',
+      link: '/analytics',
+      actionText: 'Open Analytics Suite',
+    },
+  ];
 
   return (
     <div className="space-y-10 max-w-7xl mx-auto pb-12">
@@ -179,16 +220,7 @@ export default function Dashboard({ onOpenSync = () => {} }) {
         </div>
       </section>
 
-      {/* 4. Risk & Anomaly Signals Panel */}
-      <section>
-        <SystemHealthRiskPanel
-          dashboardData={dashboardData}
-          healthStatus={healthStatus}
-          loading={loading}
-        />
-      </section>
-
-      {/* 5. Geospatial Project Intelligence Map */}
+      {/* 4. Geospatial Project Intelligence Map */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-xs font-bold uppercase tracking-wider text-[#504F47] flex items-center gap-2">
@@ -200,6 +232,75 @@ export default function Dashboard({ onOpenSync = () => {} }) {
           </span>
         </div>
         <MapContainer loading={loading} />
+      </section>
+
+      {/* 5. Civic Intelligence & Public Understanding Overview */}
+      <section className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h2 className="text-lg sm:text-xl font-black text-[#44312A] tracking-tight font-display">
+              Public Understanding & Oversight Pillars
+            </h2>
+            <p className="text-xs text-[#504F47] mt-0.5">
+              Direct access into JanDrishti's core analytical modules and parliamentary registries.
+            </p>
+          </div>
+          <Badge variant="primary" size="sm">
+            CORE PLATFORM
+          </Badge>
+        </div>
+
+        {/* 3 Core Navigation & Intelligence Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {intelligencePillars.map((pillar, i) => {
+            const Icon = pillar.icon;
+            return (
+              <Card
+                key={i}
+                className="p-5 flex flex-col justify-between hover:border-[#44312A] hover:shadow-md transition duration-200 group bg-white"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="h-9 w-9 rounded-xl bg-[#FAF7F2] border border-[#D8CBB6] flex items-center justify-center text-[#44312A] group-hover:bg-[#44312A] group-hover:text-[#E7DDCA] transition">
+                      <Icon className="h-4.5 w-4.5" />
+                    </div>
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-lg bg-[#FAF7F2] text-[#44312A] border border-[#D8CBB6]">
+                      {pillar.tag}
+                    </span>
+                  </div>
+
+                  <div>
+                    <h3 className="text-sm font-bold text-[#44312A] leading-tight">
+                      {pillar.title}
+                    </h3>
+                    <p className="text-xs text-[#504F47] leading-relaxed mt-1.5">
+                      {pillar.description}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="pt-4 mt-4 border-t border-[#D8CBB6]">
+                  <Link
+                    to={pillar.link}
+                    className="text-xs font-bold text-[#44312A] hover:underline inline-flex items-center gap-1 group-hover:text-[#34241E]"
+                  >
+                    <span>{pillar.actionText}</span>
+                    <ChevronRight className="h-3.5 w-3.5 text-[#8C7769] group-hover:text-[#44312A] transition-transform group-hover:translate-x-0.5" />
+                  </Link>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+
+        {/* Institutional Governance Disclaimer */}
+        <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#D8CBB6] text-xs text-[#504F47] flex items-start gap-3">
+          <Info className="h-4 w-4 text-[#44312A] shrink-0 mt-0.5" />
+          <p className="leading-relaxed">
+            <strong className="text-[#44312A]">Civic Governance Notice: </strong>
+            {RISK_DISCLAIMER} JanDrishti transforms official MoSPI e-SAKSHI data and parliamentary records into transparent indicators for administrative review.
+          </p>
+        </div>
       </section>
     </div>
   );

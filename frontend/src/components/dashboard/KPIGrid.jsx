@@ -198,12 +198,12 @@ export default function KPIGrid({ dashboardData, loading = false }) {
             </div>
           </div>
           <div className="my-2.5">
-            <div className="text-2xl font-black font-mono text-[#44312A] tracking-tight">
-              {formatIndianNumber(works.total_beneficiaries)}
+            <div className={`font-black font-mono text-[#44312A] tracking-tight ${works.total_beneficiaries > 0 ? 'text-2xl' : 'text-lg text-[#8C7769]'}`}>
+              {works.total_beneficiaries > 0 ? formatIndianNumber(works.total_beneficiaries) : 'Not Disclosed'}
             </div>
           </div>
           <div className="pt-2 border-t border-[#D8CBB6] text-[11px] text-[#504F47] truncate">
-            Reported citizen coverage
+            {works.total_beneficiaries > 0 ? 'Reported citizen coverage' : 'Omitted in source feeds'}
           </div>
         </div>
 
