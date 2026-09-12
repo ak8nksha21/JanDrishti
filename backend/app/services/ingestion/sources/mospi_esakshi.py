@@ -77,3 +77,43 @@ class MoSPIeSAKSHIAdapter:
         except Exception as e:
             logger.error(f"Failed to fetch MoSPI state data: {e}")
             raise
+
+    def fetch_total_tiles_data(self) -> (Dict[str, Any], str):
+        """Fetch cumulative national totals across parliamentary tenures from MoSPI dashboard."""
+        url = f"{self.BASE_URL}/rest/PreLoginDashboardData/getTotalTilesData"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+            "Content-Type": "application/json; charset=utf-8",
+            "Accept": "application/json"
+        }
+        payload = {}
+        try:
+            with httpx.Client(timeout=self.timeout, verify=False) as client:
+                response = client.post(url, json=payload, headers=headers)
+                response.raise_for_status()
+                data = response.json()
+                raw_path = self._save_raw("total_tiles", data)
+                return data, raw_path
+        except Exception as e:
+            logger.error(f"Failed to fetch MoSPI total tiles data: {e}")
+            raise
+
+    def fetch_tenure_data(self, house_code: str = "0,0,0,2") -> (Any, str):
+        """Fetch parliamentary tenures (e.g. 17th / 18th Lok Sabha) from MoSPI dashboard."""
+        url = f"{self.BASE_URL}/rest/PreLoginDashboardData/getTenureData"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+            "Content-Type": "application/json; charset=utf-8",
+            "Accept": "application/json"
+        }
+        payload = {"uname": house_code}
+        try:
+            with httpx.Client(timeout=self.timeout, verify=False) as client:
+                response = client.post(url, json=payload, headers=headers)
+                response.raise_for_status()
+                data = response.json()
+                raw_path = self._save_raw("tenures", data)
+                return data, raw_path
+        except Exception as e:
+            logger.error(f"Failed to fetch MoSPI tenure data: {e}")
+            raise

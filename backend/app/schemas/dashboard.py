@@ -16,6 +16,8 @@ class MPsDashboardMetrics(BaseModel):
     total_allocated_amount: float
     total_expenditure: float
     average_utilization_percentage: float
+    average_expenditure_percentage: Optional[float] = None
+    average_recommendation_percentage: Optional[float] = None
     total_completed_works: int
     total_recommended_works: int
     total_unspent_amount: float

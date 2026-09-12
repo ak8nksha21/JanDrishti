@@ -4,13 +4,19 @@ import {
   Briefcase,
   ChevronRight,
   IndianRupee,
+  ShieldAlert,
+  TrendingUp,
+  AlertCircle,
+  Clock,
+  ExternalLink,
 } from 'lucide-react';
 import Card, { CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import { Skeleton } from '../components/ui/Skeleton';
 import ErrorState from '../components/ui/ErrorState';
 import { fetchMPById } from '../services/mps';
-import { formatCroresLakhs } from '../utils/formatting';
+import { formatCroresLakhs, formatIndianNumber } from '../utils/formatting';
+import { calculateMPRisk, getMPRiskBadgeConfig, MP_RISK_DISCLAIMER } from '../utils/mpRisk';
 import { useRouter, Link } from '../router/Router';
 
 export default function MPDetails({ mpId: propMpId }) {
@@ -74,11 +80,40 @@ export default function MPDetails({ mpId: propMpId }) {
     );
   }
 
+  // Financial amounts formatted
   const allocated = formatCroresLakhs(mp.allocated_amount || 0);
   const expenditure = formatCroresLakhs(mp.total_expenditure || 0);
+  const recommendedAmt = formatCroresLakhs(mp.total_recommended_amount || 0);
   const unspent = formatCroresLakhs(mp.unspent_amount || 0);
-  const util = Number(mp.utilization_percentage || 0);
-  const completionRate = Number(mp.completion_rate || (mp.recommended_works_count ? ((mp.completed_works_count || 0) / mp.recommended_works_count) * 100 : 0));
+
+  // Utilization semantics: strictly separated
+  const expUtil = mp.expenditure_percentage !== null && mp.expenditure_percentage !== undefined
+    ? Number(mp.expenditure_percentage)
+    : mp.allocated_amount
+    ? (Number(mp.total_expenditure) / Number(mp.allocated_amount)) * 100
+    : 0;
+
+  const recUtil = mp.recommendation_utilization_percentage !== null && mp.recommendation_utilization_percentage !== undefined
+    ? Number(mp.recommendation_utilization_percentage)
+    : mp.utilization_percentage !== null && mp.utilization_percentage !== undefined
+    ? Number(mp.utilization_percentage)
+    : (mp.allocated_amount && mp.total_recommended_amount
+    ? (Number(mp.total_recommended_amount) / Number(mp.allocated_amount)) * 100
+    : 0);
+
+  const completionRate = Number(
+    mp.completion_rate !== null && mp.completion_rate !== undefined
+      ? mp.completion_rate
+      : (mp.recommended_works_count ? ((mp.completed_works_count || 0) / mp.recommended_works_count) * 100 : 0)
+  );
+
+  const pendingWorksCount = mp.pending_works !== null && mp.pending_works !== undefined
+    ? mp.pending_works
+    : Math.max(0, (mp.recommended_works_count || 0) - (mp.completed_works_count || 0));
+
+  // Compute Indicative MP Portfolio Risk using existing 5-factor engine
+  const mpRisk = calculateMPRisk(mp);
+  const riskBadge = getMPRiskBadgeConfig(mpRisk.level);
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -116,21 +151,25 @@ export default function MPDetails({ mpId: propMpId }) {
             </div>
           </div>
 
-          {/* Quick link to works in this constituency */}
+          {/* Quick link to itemized works available for this MP / constituency */}
           {mp.constituency && (
             <Link
-              to={`/works?constituency=${encodeURIComponent(mp.constituency)}`}
+              to={
+                mp.state
+                  ? `/works?state=${encodeURIComponent(mp.state.trim())}&constituency=${encodeURIComponent(mp.constituency.trim())}&mp_name=${encodeURIComponent(mp.mp_name ? mp.mp_name.trim() : '')}`
+                  : `/works?constituency=${encodeURIComponent(mp.constituency.trim())}&mp_name=${encodeURIComponent(mp.mp_name ? mp.mp_name.trim() : '')}`
+              }
               className="px-4 py-2 rounded-xl bg-[#FAF7F2] hover:bg-[#E7DDCA] text-[#44312A] border border-[#D8CBB6] text-xs font-bold flex items-center gap-2 transition w-fit shadow-xs"
             >
               <Briefcase className="h-3.5 w-3.5 text-[#44312A]" />
-              <span>View Constituency Works</span>
+              <span>Itemized works currently available for this MP</span>
               <ChevronRight className="h-3 w-3" />
             </Link>
           )}
         </div>
       </div>
 
-      {/* Main Grid: Financial Overview & Works Overview */}
+      {/* Row 1: Financial Ledger Overview & Works Execution Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Financial Overview */}
         <Card>
@@ -140,7 +179,7 @@ export default function MPDetails({ mpId: propMpId }) {
               <IndianRupee className="h-4 w-4 text-[#44312A]" />
             </div>
             <CardDescription>
-              Government allocated entitlement and verified expenditure disbursements
+              Government allocated entitlement and audited expenditure disbursements
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 text-xs">
@@ -171,9 +210,21 @@ export default function MPDetails({ mpId: propMpId }) {
 
             <div className="space-y-2 pt-2 border-t border-[#D8CBB6]">
               <div className="flex justify-between py-1.5 border-b border-[#D8CBB6]">
-                <span className="text-[#504F47]">Expenditure Utilization</span>
-                <span className="font-mono font-bold text-[#44312A]">
-                  {util.toFixed(1)}%
+                <div>
+                  <span className="text-[#44312A] font-bold block">Expenditure Utilization</span>
+                  <span className="text-[10px] text-[#8C7769]">Disbursed expenditure / Allocation</span>
+                </div>
+                <span className="font-mono font-bold text-sm text-[#44312A]">
+                  {expUtil.toFixed(1)}%
+                </span>
+              </div>
+              <div className="flex justify-between py-1.5 border-b border-[#D8CBB6]">
+                <div>
+                  <span className="text-[#504F47] font-semibold block">Recommendation Utilization</span>
+                  <span className="text-[10px] text-[#8C7769]">Recommended works value / Allocation</span>
+                </div>
+                <span className="font-mono font-bold text-[#504F47]">
+                  {recUtil.toFixed(1)}%
                 </span>
               </div>
               <div className="flex justify-between py-1.5 border-b border-[#D8CBB6]">
@@ -183,9 +234,12 @@ export default function MPDetails({ mpId: propMpId }) {
                 </span>
               </div>
               <div className="flex justify-between py-1.5">
-                <span className="text-[#504F47]">Payment Gap / In-Progress</span>
+                <div>
+                  <span className="text-[#504F47] block">In-Progress Outlays Ratio</span>
+                  <span className="text-[10px] text-[#8C7769]">Disbursements tied to active uncompleted works</span>
+                </div>
                 <span className="font-mono text-[#44312A]">
-                  {mp.payment_gap_percentage ? `${mp.payment_gap_percentage.toFixed(1)}%` : 'Standard'}
+                  {mp.payment_gap_percentage ? `${Number(mp.payment_gap_percentage).toFixed(1)}%` : 'Standard'}
                 </span>
               </div>
             </div>
@@ -220,7 +274,7 @@ export default function MPDetails({ mpId: propMpId }) {
               <div className="p-2.5 rounded-2xl bg-[#FAF7F2] border border-[#D8CBB6]">
                 <span className="text-[10px] text-[#504F47] uppercase font-mono block font-bold">Pending</span>
                 <span className="text-lg font-black font-mono text-[#6B5145] mt-1 block">
-                  {mp.pending_works || Math.max(0, (mp.recommended_works_count || 0) - (mp.completed_works_count || 0))}
+                  {pendingWorksCount}
                 </span>
               </div>
             </div>
@@ -239,9 +293,163 @@ export default function MPDetails({ mpId: propMpId }) {
                 />
               </div>
             </div>
+
+            <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#D8CBB6] text-[11px] text-[#504F47] leading-relaxed">
+              <strong>Reporting Notice: </strong> Recommended count indicates sanctioned proposals submitted to District Nodal Authorities; completed works reflects verified completion certificates.
+            </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Row 2: Indicative MP Portfolio Risk Card (5-Factor Engine) */}
+      <Card className="border-2 border-[#D8CBB6]">
+        <CardHeader className="bg-[#FAF7F2] border-b border-[#D8CBB6]">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="h-5 w-5 text-[#44312A]" />
+              <div>
+                <CardTitle className="text-base text-[#44312A]">Indicative MP Portfolio Risk</CardTitle>
+                <CardDescription className="text-xs text-[#504F47]">
+                  Composite multi-factor risk index computed from legislative financial and execution records
+                </CardDescription>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="text-right">
+                <span className="text-[10px] uppercase font-mono text-[#8C7769] block font-bold">Portfolio Score</span>
+                <span className="text-2xl font-black font-mono text-[#44312A]">
+                  {mpRisk.score !== null ? `${mpRisk.score}` : 'N/A'}
+                  <span className="text-xs font-normal text-[#8C7769]"> / 100</span>
+                </span>
+              </div>
+              <span
+                className={`px-3 py-1 rounded-xl text-xs font-bold border ${riskBadge.bgClass}`}
+              >
+                {mpRisk.level} Risk
+              </span>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-6 space-y-6">
+          {/* Top Contributing Signals Chips */}
+          {mpRisk.topSignals && mpRisk.topSignals.length > 0 && (
+            <div className="space-y-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#504F47]">
+                Key Analytical Indicators
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {mpRisk.topSignals.map((sig, idx) => (
+                  <span
+                    key={idx}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#FAF7F2] border border-[#D8CBB6] text-xs font-medium text-[#44312A]"
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#44312A]" />
+                    {sig}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 5-Factor Detailed Risk Breakdown */}
+          <div className="space-y-3">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#504F47]">
+              Multi-Factor Risk Breakdown (5 Core Signals — 20% Each)
+            </span>
+            <div className="grid grid-cols-1 gap-3">
+              {mpRisk.breakdown && mpRisk.breakdown.map((item) => (
+                <div
+                  key={item.key}
+                  className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#D8CBB6] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                >
+                  <div className="space-y-1 flex-1">
+                    <div className="flex items-center gap-2">
+                      <strong className="text-[#44312A]">{item.title}</strong>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white text-[#504F47] border border-[#D8CBB6]">
+                        Weight: {item.weight}%
+                      </span>
+                    </div>
+                    <p className="text-[#504F47] text-[11px] leading-relaxed">
+                      {item.explanation}
+                    </p>
+                    <span className="text-[10px] text-[#8C7769] font-mono block">
+                      Metric: {item.sourceMetric}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-4 shrink-0 sm:border-l sm:border-[#D8CBB6] sm:pl-4">
+                    <div className="text-right">
+                      <span className="text-[10px] text-[#8C7769] block font-mono">Reported Value</span>
+                      <span className="font-mono font-bold text-[#44312A] block">{item.valueDisplay}</span>
+                    </div>
+                    <div className="text-right min-w-[70px]">
+                      <span className="text-[10px] text-[#8C7769] block font-mono">Factor Score</span>
+                      <span className={`font-mono font-bold text-sm ${
+                        item.score >= 70 ? 'text-[#44312A]' : item.score >= 40 ? 'text-[#6B5145]' : 'text-[#8C7769]'
+                      }`}>
+                        {item.score} / 100
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Statutory Analytical Disclaimer */}
+          <div className="p-3.5 rounded-2xl bg-[#F4EFE6] border border-[#D8CBB6] text-xs text-[#504F47] flex items-start gap-2.5">
+            <AlertCircle className="h-4 w-4 text-[#44312A] shrink-0 mt-0.5" />
+            <p className="leading-relaxed">
+              <strong className="text-[#44312A]">Methodology Notice: </strong>
+              {MP_RISK_DISCLAIMER}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Row 3: Trend Intelligence Context Card (Supplementary Temporal Evidence) */}
+      <Card className="bg-white">
+        <CardHeader className="bg-[#FAF7F2] border-b border-[#D8CBB6]">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-[#44312A]" />
+              <CardTitle className="text-sm text-[#44312A]">Trend Intelligence (Supplementary Temporal Context)</CardTitle>
+            </div>
+            <Badge variant="outline" size="sm">
+              TEMPORAL CONTEXT
+            </Badge>
+          </div>
+          <CardDescription className="text-xs text-[#504F47]">
+            Historical velocity analysis (evaluated separately from canonical risk scores)
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-5 space-y-4 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Completion Velocity Context */}
+            <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#D8CBB6] space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-[#44312A]">Project Completion Velocity</span>
+                <Badge variant="primary" size="sm">GRANULAR SAMPLE</Badge>
+              </div>
+              <p className="text-[#504F47] text-[11px] leading-relaxed">
+                Completion activity is derived from source-reported dates on itemized works in the registry. Evaluates quarterly project completion velocity across available records.
+              </p>
+            </div>
+
+            {/* Financial Velocity Context */}
+            <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#D8CBB6] space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-[#44312A]">Financial Cashflow Trajectory</span>
+                <Badge variant="outline" size="sm">SINGLE SNAPSHOT</Badge>
+              </div>
+              <p className="text-[#504F47] text-[11px] leading-relaxed">
+                Status: <strong>Insufficient Historical Data</strong>. Current public records provide a cumulative snapshot of total allocations and expenditures without periodic disbursement ledgers.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

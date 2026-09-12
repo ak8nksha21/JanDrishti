@@ -58,25 +58,18 @@ export default function Footer() {
                   Analytics & Visualizations
                 </Link>
               </li>
-              <li>
-                <Link to="/data-sources" className="hover:text-[#44312A] transition-colors">
-                  Data Sources & Pipeline
-                </Link>
-              </li>
-              <li>
-                <Link to="/status" className="hover:text-[#44312A] transition-colors">
-                  System Health & Diagnostics
-                </Link>
-              </li>
             </ul>
           </div>
 
-          {/* Reference & Provenance */}
+          {/* Reference & Source Attribution */}
           <div className="space-y-2.5">
             <h4 className="text-xs font-bold uppercase tracking-wider text-[#44312A]">
-              Data Provenance & Links
+              Official Data Sources
             </h4>
-            <ul className="space-y-2 text-xs">
+            <p className="text-xs text-[#504F47] leading-relaxed">
+              Data sources: MoSPI/e-SAKSHI and publicly available legislative records.
+            </p>
+            <ul className="space-y-2 text-xs pt-1">
               <li>
                 <a
                   href="https://mplads.mospi.gov.in"
@@ -86,18 +79,6 @@ export default function Footer() {
                 >
                   <Database className="h-3.5 w-3.5 text-[#44312A]" />
                   <span>MoSPI e-SAKSHI Portal</span>
-                  <ExternalLink className="h-3 w-3" />
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://api.empoweredindian.in"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 text-[#504F47] hover:text-[#44312A] transition-colors"
-                >
-                  <Database className="h-3.5 w-3.5 text-[#44312A]" />
-                  <span>Empowered Indian API</span>
                   <ExternalLink className="h-3 w-3" />
                 </a>
               </li>
@@ -115,6 +96,7 @@ export default function Footer() {
               </li>
             </ul>
           </div>
+
         </div>
 
         {/* Institutional Statutory Disclaimer */}

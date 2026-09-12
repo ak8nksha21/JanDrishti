@@ -137,7 +137,7 @@ export default function WorkDetails({ workId: propWorkId }) {
             </button>
             <div className="text-right pl-3 border-l border-[#D8CBB6]">
               <span className="text-[10px] uppercase font-mono text-[#504F47] block font-bold">
-                Sanctioned Cost
+                Reported Completed Cost
               </span>
               <span className="text-xl font-black font-mono text-[#44312A]">
                 {costFormatted.compact}
@@ -168,7 +168,18 @@ export default function WorkDetails({ workId: propWorkId }) {
           <CardContent className="space-y-3 text-xs">
             <div className="flex justify-between py-2 border-b border-[#D8CBB6]">
               <span className="text-[#504F47]">Parliamentarian (MP)</span>
-              <strong className="text-[#44312A]">{work.mp_name || 'Not Available'}</strong>
+              {work.mp_name ? (
+                <Link
+                  to={`/mps?search=${encodeURIComponent(work.mp_name)}`}
+                  className="text-[#44312A] hover:underline font-bold inline-flex items-center gap-1 group"
+                  title="View MP Performance Dossier"
+                >
+                  <span>{work.mp_name}</span>
+                  <ExternalLink className="h-3 w-3 text-[#8C7769] group-hover:text-[#44312A]" />
+                </Link>
+              ) : (
+                <strong className="text-[#44312A]">Not Available</strong>
+              )}
             </div>
             <div className="flex justify-between py-2 border-b border-[#D8CBB6]">
               <span className="text-[#504F47]">Parliamentary House</span>
@@ -185,7 +196,7 @@ export default function WorkDetails({ workId: propWorkId }) {
             <div className="flex justify-between py-2">
               <span className="text-[#504F47]">Reported Beneficiaries</span>
               <span className="text-[#44312A] font-mono font-bold">
-                {work.beneficiaries ? formatIndianNumber(work.beneficiaries) : 'Not Specified'}
+                {work.beneficiaries ? formatIndianNumber(work.beneficiaries) : 'Insufficient Data'}
               </span>
             </div>
           </CardContent>
@@ -199,7 +210,7 @@ export default function WorkDetails({ workId: propWorkId }) {
           </CardHeader>
           <CardContent className="space-y-3 text-xs">
             <div className="flex justify-between py-2 border-b border-[#D8CBB6]">
-              <span className="text-[#504F47]">Final Executed Cost</span>
+              <span className="text-[#504F47]">Reported Completed Cost</span>
               <span className="font-mono font-bold text-[#44312A]">{costFormatted.exact}</span>
             </div>
             <div className="flex justify-between py-2 border-b border-[#D8CBB6]">
@@ -215,7 +226,7 @@ export default function WorkDetails({ workId: propWorkId }) {
             <div className="flex justify-between py-2">
               <span className="text-[#504F47]">Quality Rating</span>
               <span className="font-mono text-[#44312A]">
-                {work.quality_rating ? `${work.quality_rating} / 5.0` : 'Pending Field Assessment'}
+                {work.quality_rating ? `${work.quality_rating} / 5.0` : 'Insufficient Data (No Field Evaluation)'}
               </span>
             </div>
           </CardContent>

@@ -82,12 +82,12 @@ def load_csv_dataset(
             if target_const and target_const not in row_const:
                 continue
 
-            # Parse cost (Allocation Amount in INR -> converted to Lakhs)
+            # Parse cost (Allocation Amount in INR)
             try:
                 raw_amt = float(row.get("ALLOCATION AMOUNT") or 0.0)
-                cost_lakhs = round(raw_amt / 100000.0, 2)
+                cost_inr = round(raw_amt, 2)
             except Exception:
-                cost_lakhs = 5.0
+                cost_inr = 500000.0
 
             # Generate synthetic but stable work_id from index/source
             work_id_val = 1000000 + idx
@@ -109,7 +109,7 @@ def load_csv_dataset(
                     work_id=work_id_val,
                     source_id=f"csv_{idx}",
                     work_description=row.get("WORK", "Community Infrastructure Development"),
-                    cost=cost_lakhs,
+                    cost=cost_inr,
                     category=row.get("CATEGORY", "General Infrastructure"),
                     mp_name=row.get("MP NAME", "Hon. Member of Parliament"),
                     constituency=row_const,

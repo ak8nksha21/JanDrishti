@@ -4,8 +4,6 @@ import {
   Briefcase,
   Users,
   BarChart3,
-  Database,
-  Activity,
   RefreshCw,
   ExternalLink,
   Shield,
@@ -51,19 +49,8 @@ export default function Sidebar({
       icon: BarChart3,
       badge: null,
     },
-    {
-      label: 'Data Sources',
-      to: '/data-sources',
-      icon: Database,
-      badge: 'Validated',
-    },
-    {
-      label: 'System Status',
-      to: '/status',
-      icon: Activity,
-      badge: apiStatus.isOnline ? 'Active' : 'Offline',
-    },
   ];
+
 
   const sidebarContent = (
     <div className="flex flex-col h-full bg-[#FAF7F2] border-r border-[#D8CBB6] w-64 text-[#44312A] select-none">

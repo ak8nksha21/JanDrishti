@@ -45,12 +45,11 @@ export default function KPIGrid({ dashboardData, loading = false }) {
   const totalExpenditure = formatCroresLakhs(mps.total_expenditure);
   const totalUnspent = formatCroresLakhs(mps.total_unspent_amount);
 
-  // Utilization percentage
-  const utilVal = mps.average_utilization_percentage;
-  const utilizationDisplay =
-    utilVal !== null && utilVal !== undefined && !isNaN(Number(utilVal))
-      ? `${Number(utilVal).toFixed(1)}%`
-      : 'N/A';
+  // National Expenditure Ratio (true expenditure / allocation)
+  const totalAllocNum = Number(mps.total_allocated_amount || 0);
+  const totalExpNum = Number(mps.total_expenditure || 0);
+  const natExpRatio = totalAllocNum > 0 ? (totalExpNum / totalAllocNum) * 100 : 0;
+  const utilizationDisplay = `${natExpRatio.toFixed(1)}%`;
 
   return (
     <div className="space-y-4">
@@ -71,12 +70,12 @@ export default function KPIGrid({ dashboardData, loading = false }) {
                     Verified Disbursements
                   </span>
                   <span className="text-xs font-semibold text-[#44312A]">
-                    Cumulative Total Expenditure
+                    National Financial Outlay (774 MPs)
                   </span>
                 </div>
               </div>
               <span className="text-[10px] font-mono bg-[#FAF7F2] text-[#44312A] px-2.5 py-1 rounded-full border border-[#D8CBB6]">
-                SQL Aggregated
+                All-India Ledger
               </span>
             </div>
 
@@ -99,7 +98,7 @@ export default function KPIGrid({ dashboardData, loading = false }) {
               <strong className="text-[#44312A] font-mono">{totalAllocated.compact}</strong>
             </div>
             <div className="flex items-center gap-2 text-[#504F47] font-mono text-[11px]">
-              <span>Expenditure Ratio:</span>
+              <span>National Expenditure Ratio:</span>
               <strong className="text-[#44312A] font-bold">{utilizationDisplay}</strong>
             </div>
           </div>
@@ -117,15 +116,15 @@ export default function KPIGrid({ dashboardData, loading = false }) {
                 </div>
                 <div>
                   <span className="text-[10px] uppercase font-mono tracking-widest text-[#504F47] font-bold block">
-                    Infrastructure Delivery
+                    Active Works Registry
                   </span>
                   <span className="text-xs font-semibold text-[#44312A]">
-                    Total Completed Works
+                    Itemized Completed Works Sample
                   </span>
                 </div>
               </div>
               <span className="text-[10px] font-mono bg-[#FAF7F2] text-[#44312A] px-2.5 py-1 rounded-full border border-[#D8CBB6]">
-                Itemized Registry
+                Granular Registry
               </span>
             </div>
 
@@ -134,13 +133,13 @@ export default function KPIGrid({ dashboardData, loading = false }) {
                 {formatIndianNumber(works.total_works)}
               </div>
               <div className="text-xs text-[#504F47]">
-                Registered Across <strong className="text-[#44312A]">{formatIndianNumber(mps.total_mps || 0)} MPs</strong> in parliamentary ledgers
+                Active granular sample across <strong className="text-[#44312A]">{works.unique_states || 4} states</strong> ({works.unique_constituencies || 21} constituencies)
               </div>
             </div>
           </div>
 
           <div className="pt-4 mt-2 border-t border-[#D8CBB6] flex items-center justify-between text-xs text-[#504F47]">
-            <span>Average Work Cost:</span>
+            <span>Average Completed Work Cost:</span>
             <strong className="text-[#44312A] font-mono">{avgCost.compact}</strong>
           </div>
         </div>
@@ -208,11 +207,11 @@ export default function KPIGrid({ dashboardData, loading = false }) {
           </div>
         </div>
 
-        {/* Tile 4: National Scope */}
+        {/* Tile 4: Itemized Dataset Geographic Coverage */}
         <div className="rounded-2xl bg-white border border-[#D8CBB6] shadow-xs hover:border-[#44312A] hover:shadow-md p-4 sm:p-5 transition-all duration-200 flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-[#504F47]">
-              Geographic Breadth
+              Current Ingested Works Coverage
             </span>
             <div className="h-7 w-7 rounded-lg bg-[#FAF7F2] border border-[#D8CBB6] flex items-center justify-center text-[#44312A]">
               <MapPin className="h-3.5 w-3.5" />
@@ -224,7 +223,7 @@ export default function KPIGrid({ dashboardData, loading = false }) {
             </div>
           </div>
           <div className="pt-2 border-t border-[#D8CBB6] text-[11px] text-[#504F47] truncate">
-            Across <span className="font-mono text-[#44312A] font-semibold">{works.unique_constituencies || 'N/A'}</span> constituencies
+            Across <span className="font-mono text-[#44312A] font-semibold">{works.unique_constituencies || 'N/A'}</span> constituencies (Itemized Dataset)
           </div>
         </div>
       </div>

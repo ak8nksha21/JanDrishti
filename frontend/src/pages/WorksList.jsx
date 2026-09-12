@@ -11,6 +11,8 @@ import {
   Info,
   Sparkles,
   Briefcase,
+  MapPin,
+  Building,
 } from 'lucide-react';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
@@ -31,25 +33,22 @@ export default function WorksList() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { navigate } = useRouter();
 
-  // Query state from URL
-  const initialPage = Number(searchParams.get('page')) || 1;
-  const initialLimit = Number(searchParams.get('limit')) || 20;
-  const initialConstituency = searchParams.get('constituency') || '';
-  const initialState = searchParams.get('state') || '';
-  const initialCategory = searchParams.get('category') || '';
-  const initialRiskFilter = searchParams.get('risk') || 'ALL';
-
-  const [page, setPage] = useState(initialPage);
-  const [limit, setLimit] = useState(initialLimit);
-  const [constituency, setConstituency] = useState(initialConstituency);
-  const [state, setState] = useState(initialState);
-  const [category, setCategory] = useState(initialCategory);
-  const [riskFilter, setRiskFilter] = useState(initialRiskFilter);
-  const [searchTerm, setSearchTerm] = useState('');
+  // Query state initialized from URL
+  const [page, setPage] = useState(() => Number(searchParams.get('page')) || 1);
+  const [limit, setLimit] = useState(() => Number(searchParams.get('limit')) || 20);
+  const [constituency, setConstituency] = useState(() => searchParams.get('constituency') || '');
+  const [state, setState] = useState(() => searchParams.get('state') || '');
+  const [mpName, setMpName] = useState(() => searchParams.get('mp_name') || searchParams.get('mp') || '');
+  const [category, setCategory] = useState(() => searchParams.get('category') || '');
+  const [riskFilter, setRiskFilter] = useState(() => searchParams.get('risk') || 'ALL');
+  const [searchTerm, setSearchTerm] = useState(() => searchParams.get('search') || searchParams.get('q') || '');
 
   const [worksData, setWorksData] = useState({ items: [], total: 0, total_pages: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Full dataset registry for populating autocomplete and filter options (591 works)
+  const [allWorksRegistry, setAllWorksRegistry] = useState([]);
 
   // Selected work for slide-over detail panel
   const [selectedWork, setSelectedWork] = useState(null);
@@ -58,6 +57,98 @@ export default function WorksList() {
   // Active AI Investigation Target
   const [investigatingWorkId, setInvestigatingWorkId] = useState(null);
 
+  // Load all works once to compute available state/constituency/MP filter options
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchAllWorksForFilters() {
+      try {
+        const full = await getWorks({ limit: 1000 });
+        if (isMounted && full && Array.isArray(full.items)) {
+          setAllWorksRegistry(full.items);
+        }
+      } catch (e) {
+        console.warn('Could not load full works registry for filter options:', e);
+      }
+    }
+    fetchAllWorksForFilters();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Compute distinct states present in the works dataset
+  const availableStates = useMemo(() => {
+    const statesSet = new Set();
+    allWorksRegistry.forEach((w) => {
+      if (w.state && w.state.trim()) {
+        statesSet.add(w.state.trim());
+      }
+    });
+    return Array.from(statesSet).sort((a, b) => a.localeCompare(b));
+  }, [allWorksRegistry]);
+
+  // Compute distinct MPs present in the works dataset
+  const availableMPs = useMemo(() => {
+    let items = allWorksRegistry;
+    if (state && state.trim()) {
+      items = items.filter(
+        (w) => w.state && w.state.toLowerCase() === state.toLowerCase().trim()
+      );
+    }
+    if (constituency && constituency.trim()) {
+      items = items.filter(
+        (w) => w.constituency && w.constituency.toLowerCase() === constituency.toLowerCase().trim()
+      );
+    }
+    const mpSet = new Set();
+    items.forEach((w) => {
+      if (w.mp_name && w.mp_name.trim()) {
+        mpSet.add(w.mp_name.trim());
+      }
+    });
+    return Array.from(mpSet).sort((a, b) => a.localeCompare(b));
+  }, [allWorksRegistry, state, constituency]);
+
+  // Compute distinct constituencies present in the works dataset
+  const availableConstituencies = useMemo(() => {
+    let items = allWorksRegistry;
+    if (state && state.trim()) {
+      items = items.filter(
+        (w) => w.state && w.state.toLowerCase() === state.toLowerCase().trim()
+      );
+    }
+    const constSet = new Set();
+    items.forEach((w) => {
+      if (w.constituency && w.constituency.trim()) {
+        constSet.add(w.constituency.trim());
+      }
+    });
+    return Array.from(constSet).sort((a, b) => a.localeCompare(b));
+  }, [allWorksRegistry, state]);
+
+  // Reactive URL query parameter synchronization
+  useEffect(() => {
+    const urlConstituency = searchParams.get('constituency') || '';
+    const urlState = searchParams.get('state') || '';
+    const urlMp = searchParams.get('mp_name') || searchParams.get('mp') || '';
+    const urlCategory = searchParams.get('category') || '';
+    const urlPage = Number(searchParams.get('page')) || 1;
+    const urlLimit = Number(searchParams.get('limit')) || 20;
+    const urlRisk = searchParams.get('risk') || 'ALL';
+    const urlSearch = searchParams.get('search') || searchParams.get('q') || '';
+
+    setConstituency(urlConstituency);
+    setState(urlState);
+    setMpName(urlMp);
+    setCategory(urlCategory);
+    setPage(urlPage);
+    setLimit(urlLimit);
+    setRiskFilter(urlRisk);
+    if (urlSearch) {
+      setSearchTerm(urlSearch);
+    }
+  }, [searchParams]);
+
   const loadWorks = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -65,9 +156,11 @@ export default function WorksList() {
       const params = {
         page,
         limit,
-        constituency: constituency || undefined,
-        state: state || undefined,
-        category: category || undefined,
+        constituency: constituency.trim() || undefined,
+        state: state.trim() || undefined,
+        mp_name: mpName.trim() || undefined,
+        category: category.trim() || undefined,
+        search: searchTerm.trim() || undefined,
       };
       const data = await getWorks(params);
       setWorksData(data || { items: [], total: 0, total_pages: 0 });
@@ -77,7 +170,7 @@ export default function WorksList() {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, constituency, state, category]);
+  }, [page, limit, constituency, state, mpName, category, searchTerm]);
 
   useEffect(() => {
     loadWorks();
@@ -107,10 +200,12 @@ export default function WorksList() {
     e?.preventDefault();
     setPage(1);
     const params = new URLSearchParams();
-    if (constituency) params.set('constituency', constituency);
-    if (state) params.set('state', state);
-    if (category && category !== 'All') params.set('category', category);
+    if (constituency.trim()) params.set('constituency', constituency.trim());
+    if (state.trim()) params.set('state', state.trim());
+    if (mpName.trim()) params.set('mp_name', mpName.trim());
+    if (category && category !== 'All') params.set('category', category.trim());
     if (riskFilter && riskFilter !== 'ALL') params.set('risk', riskFilter);
+    if (searchTerm.trim()) params.set('search', searchTerm.trim());
     if (limit !== 20) params.set('limit', String(limit));
     params.set('page', '1');
     setSearchParams(params);
@@ -119,6 +214,7 @@ export default function WorksList() {
   const handleClearFilters = () => {
     setConstituency('');
     setState('');
+    setMpName('');
     setCategory('');
     setRiskFilter('ALL');
     setSearchTerm('');
@@ -126,10 +222,11 @@ export default function WorksList() {
     setSearchParams({});
   };
 
-  // Client-side text & risk filters
+  // Client-side risk band filter
   const displayedItems = useMemo(() => {
     return (worksData.items || []).filter((w) => {
-      // Risk filter
+      if (riskFilter === 'ALL') return true;
+
       const score = Number(w.overall_score || 0);
       let derivedRisk = w.risk_level || 'Low';
       if (!w.risk_level && score > 0) {
@@ -149,22 +246,13 @@ export default function WorksList() {
         return false;
       }
 
-      // Keyword search
-      if (!searchTerm.trim()) return true;
-      const term = searchTerm.toLowerCase();
-      return (
-        (w.work_description && w.work_description.toLowerCase().includes(term)) ||
-        (w.mp_name && w.mp_name.toLowerCase().includes(term)) ||
-        (w.constituency && w.constituency.toLowerCase().includes(term)) ||
-        (w.state && w.state.toLowerCase().includes(term)) ||
-        (w.work_id && String(w.work_id).includes(term))
-      );
+      return true;
     });
-  }, [worksData.items, riskFilter, searchTerm]);
+  }, [worksData.items, riskFilter]);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto relative">
-      {/* 1. Header & Quick Value Proposition */}
+      {/* 1. Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
@@ -183,7 +271,7 @@ export default function WorksList() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setInvestigatingWorkId('278726')}
-            className="px-4 py-2 rounded-xl bg-[#44312A] hover:bg-[#34241E] text-[#E7DDCA] text-xs font-bold flex items-center gap-2 transition cursor-pointer shadow-sm"
+            className="px-4 py-2 rounded-xl bg-[#44312A] hover:bg-[#34241E] text-[#E7DDCA] text-xs font-bold flex items-center gap-2 transition cursor-pointer shadow-sm active:scale-95"
           >
             <Sparkles className="h-3.5 w-3.5 text-[#E7DDCA]" />
             <span>Investigate Demo Work #278726</span>
@@ -191,42 +279,123 @@ export default function WorksList() {
         </div>
       </div>
 
-      {/* 2. Filter Bar & Search Controls */}
+      {/* 2. Active Constituency / State / MP Filter Results Banner */}
+      {(constituency || state || mpName) && (
+        <div className="bg-[#FAF7F2] border border-[#D8CBB6] rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-xl bg-[#E7DDCA] border border-[#D8CBB6] flex items-center justify-center text-[#44312A] shrink-0 font-bold">
+              <Briefcase className="h-4 w-4 text-[#44312A]" />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                {mpName && (
+                  <span className="text-[#504F47] font-medium">
+                    MP: <strong className="text-[#44312A] bg-white px-2 py-0.5 rounded-lg border border-[#D8CBB6]">{mpName}</strong>
+                  </span>
+                )}
+                {constituency && (
+                  <span className="text-[#504F47] font-medium">
+                    Constituency: <strong className="text-[#44312A] bg-white px-2 py-0.5 rounded-lg border border-[#D8CBB6]">{constituency}</strong>
+                  </span>
+                )}
+                {state && (
+                  <span className="text-[#504F47] font-medium">
+                    State: <strong className="text-[#44312A] bg-white px-2 py-0.5 rounded-lg border border-[#D8CBB6]">{state}</strong>
+                  </span>
+                )}
+              </div>
+              <div className="text-[11px] text-[#504F47] mt-1">
+                {loading ? (
+                  'Searching records...'
+                ) : worksData.total > 0 ? (
+                  <span>
+                    <strong className="text-[#44312A] font-mono font-bold">{worksData.total}</strong> works found in active sample registry.
+                  </span>
+                ) : (
+                  <span className="text-[#8C7769] font-semibold">
+                    No works found for this filter in the current itemized sample.
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleClearFilters}
+            className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-[#E7DDCA] text-[#44312A] border border-[#D8CBB6] font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-2xs w-fit"
+          >
+            <X className="h-3.5 w-3.5" />
+            <span>Clear Filter</span>
+          </button>
+        </div>
+      )}
+
+      {/* 3. Filter Bar & Search Controls */}
       <Card className="p-4 bg-white">
         <form onSubmit={handleFilterApply} className="space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
             {/* Search Input */}
             <div className="relative">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#8C7769]" />
               <input
                 type="text"
-                placeholder="Search description, MP, ID..."
+                placeholder="Search description, ID..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-[#D8CBB6] bg-[#FAF7F2] text-[#44312A] placeholder-[#8C7769] focus:outline-none focus:border-[#44312A]"
               />
             </div>
 
-            {/* Constituency Filter */}
-            <div>
+            {/* MP Filter */}
+            <div className="relative">
               <input
                 type="text"
+                list="mp-options"
+                placeholder="Filter by MP..."
+                value={mpName}
+                onChange={(e) => setMpName(e.target.value)}
+                className="w-full px-3 py-1.5 text-xs rounded-xl border border-[#D8CBB6] bg-[#FAF7F2] text-[#44312A] placeholder-[#8C7769] focus:outline-none focus:border-[#44312A]"
+              />
+              <datalist id="mp-options">
+                {availableMPs.map((m) => (
+                  <option key={m} value={m} />
+                ))}
+              </datalist>
+            </div>
+
+            {/* Constituency Filter */}
+            <div className="relative">
+              <input
+                type="text"
+                list="constituency-options"
                 placeholder="Filter by constituency..."
                 value={constituency}
                 onChange={(e) => setConstituency(e.target.value)}
                 className="w-full px-3 py-1.5 text-xs rounded-xl border border-[#D8CBB6] bg-[#FAF7F2] text-[#44312A] placeholder-[#8C7769] focus:outline-none focus:border-[#44312A]"
               />
+              <datalist id="constituency-options">
+                {availableConstituencies.map((c) => (
+                  <option key={c} value={c} />
+                ))}
+              </datalist>
             </div>
 
             {/* State Filter */}
-            <div>
+            <div className="relative">
               <input
                 type="text"
+                list="state-options"
                 placeholder="Filter by state..."
                 value={state}
                 onChange={(e) => setState(e.target.value)}
                 className="w-full px-3 py-1.5 text-xs rounded-xl border border-[#D8CBB6] bg-[#FAF7F2] text-[#44312A] placeholder-[#8C7769] focus:outline-none focus:border-[#44312A]"
               />
+              <datalist id="state-options">
+                {availableStates.map((s) => (
+                  <option key={s} value={s} />
+                ))}
+              </datalist>
             </div>
 
             {/* Category Filter */}
@@ -248,9 +417,9 @@ export default function WorksList() {
                 type="submit"
                 className="flex-1 py-1.5 px-3 bg-[#44312A] hover:bg-[#34241E] text-[#E7DDCA] rounded-xl text-xs font-bold transition cursor-pointer shadow-xs"
               >
-                Apply Filters
+                Apply
               </button>
-              {(constituency || state || category || searchTerm) && (
+              {(constituency || state || mpName || category || searchTerm) && (
                 <button
                   type="button"
                   onClick={handleClearFilters}
@@ -265,15 +434,19 @@ export default function WorksList() {
         </form>
       </Card>
 
-      {/* 3. Works Table */}
+      {/* 4. Works Table */}
       {loading ? (
         <TableSkeleton rows={8} />
       ) : error ? (
         <ErrorState message={error} onRetry={loadWorks} />
       ) : displayedItems.length === 0 ? (
         <EmptyState
-          title="No Works Match Query"
-          description="Try adjusting your constituency or category filter parameters."
+          title={constituency || mpName ? 'No Works Found' : 'No Works Match Query'}
+          description={
+            constituency || mpName
+              ? 'The MP financial dataset contains 774 MP records nationwide, while the current itemized work registry contains 591 works across 21 constituencies in 4 states.'
+              : 'Try adjusting your MP, constituency, state, or category filter parameters.'
+          }
           onAction={handleClearFilters}
           actionLabel="Reset Filters"
         />
@@ -288,7 +461,7 @@ export default function WorksList() {
                   <th className="py-3 px-4">Member of Parliament</th>
                   <th className="py-3 px-4">Constituency / State</th>
                   <th className="py-3 px-4">Category</th>
-                  <th className="py-3 px-4 text-right">Sanctioned Cost</th>
+                  <th className="py-3 px-4 text-right">Reported Cost</th>
                   <th className="py-3 px-4 text-center">Completion</th>
                   <th className="py-3 px-4 text-center">Actions</th>
                 </tr>
@@ -390,7 +563,13 @@ export default function WorksList() {
             <div className="flex items-center gap-2">
               <button
                 disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                onClick={() => {
+                  const newPage = Math.max(1, page - 1);
+                  setPage(newPage);
+                  const params = new URLSearchParams(searchParams);
+                  params.set('page', String(newPage));
+                  setSearchParams(params);
+                }}
                 className="px-3 py-1.5 rounded-xl bg-white border border-[#D8CBB6] hover:bg-[#FAF7F2] disabled:opacity-40 disabled:cursor-not-allowed text-[#44312A] font-semibold flex items-center gap-1 transition cursor-pointer shadow-xs"
               >
                 <ChevronLeft className="h-3.5 w-3.5" />
@@ -401,7 +580,13 @@ export default function WorksList() {
               </span>
               <button
                 disabled={page >= worksData.total_pages}
-                onClick={() => setPage((p) => p + 1)}
+                onClick={() => {
+                  const newPage = page + 1;
+                  setPage(newPage);
+                  const params = new URLSearchParams(searchParams);
+                  params.set('page', String(newPage));
+                  setSearchParams(params);
+                }}
                 className="px-3 py-1.5 rounded-xl bg-white border border-[#D8CBB6] hover:bg-[#FAF7F2] disabled:opacity-40 disabled:cursor-not-allowed text-[#44312A] font-semibold flex items-center gap-1 transition cursor-pointer shadow-xs"
               >
                 <span>Next</span>
@@ -412,7 +597,7 @@ export default function WorksList() {
         </Card>
       )}
 
-      {/* 4. Slide-Over Work Detail Panel (Drawer) */}
+      {/* 5. Slide-Over Work Detail Panel (Drawer) */}
       {selectedWork && (
         <div className="fixed inset-y-0 right-0 w-full sm:w-[460px] bg-white border-l border-[#D8CBB6] shadow-2xl z-40 flex flex-col animate-in slide-in-from-right duration-300">
           {/* Drawer Header */}
@@ -444,7 +629,7 @@ export default function WorksList() {
               <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#D8CBB6] flex items-center justify-between">
                 <div>
                   <span className="text-[10px] text-[#504F47] uppercase font-mono block font-bold">
-                    Sanctioned Cost
+                    Reported Completed Cost
                   </span>
                   <span className="text-xl font-black font-mono text-[#44312A]">
                     {formatCroresLakhs(selectedWork.cost).compact}
@@ -488,9 +673,20 @@ export default function WorksList() {
                 Administrative Scope
               </span>
               <div className="space-y-2 p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#D8CBB6]">
-                <div className="flex justify-between py-1 border-b border-[#D8CBB6]">
+                <div className="flex justify-between items-center py-1 border-b border-[#D8CBB6]">
                   <span>Member of Parliament:</span>
-                  <strong className="text-[#44312A]">{selectedWork.mp_name || 'N/A'}</strong>
+                  {selectedWork.mp_name ? (
+                    <Link
+                      to={`/mps?search=${encodeURIComponent(selectedWork.mp_name)}`}
+                      className="text-[#44312A] hover:underline font-bold inline-flex items-center gap-1 group"
+                      title="View MP Performance Dossier"
+                    >
+                      <span>{selectedWork.mp_name}</span>
+                      <ExternalLink className="h-3 w-3 text-[#8C7769] group-hover:text-[#44312A]" />
+                    </Link>
+                  ) : (
+                    <strong className="text-[#44312A]">N/A</strong>
+                  )}
                 </div>
                 <div className="flex justify-between py-1 border-b border-[#D8CBB6]">
                   <span>Parliamentary House:</span>

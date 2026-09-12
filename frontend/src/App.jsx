@@ -12,8 +12,6 @@ import WorkDetails from './pages/WorkDetails';
 import MPs from './pages/MPs';
 import MPDetails from './pages/MPDetails';
 import Analytics from './pages/Analytics';
-import DataSources from './pages/DataSources';
-import SystemStatus from './pages/SystemStatus';
 
 import { checkHealth } from './services/status';
 
@@ -88,12 +86,6 @@ function AppContent() {
     }
     if (path === '/analytics') {
       return <Analytics />;
-    }
-    if (path === '/data-sources') {
-      return <DataSources onOpenSync={() => setIsSyncOpen(true)} />;
-    }
-    if (path === '/status') {
-      return <SystemStatus />;
     }
 
     // 404 Fallback

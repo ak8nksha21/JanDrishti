@@ -1,19 +1,15 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   LayoutDashboard,
   Briefcase,
   Users,
   BarChart3,
-  Database,
-  Activity,
   Search,
   RefreshCw,
   Menu,
   X,
-  ChevronDown,
 } from 'lucide-react';
 import { Link, useRouter } from '../../router/Router';
-import { formatRelativeTime } from '../../utils/formatting';
 
 /**
  * Bespoke JanDrishti Logo Emblem
@@ -74,22 +70,9 @@ export default function TopNavbar({
 }) {
   const { path } = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [systemDropdownOpen, setSystemDropdownOpen] = useState(false);
-  const dropdownRef = useRef(null);
 
-  // Close dropdown on outside click
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setSystemDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // Simplified Core Judge-Facing MVP Navigation
-  const primaryNavItems = [
+  // Core Product Navigation Areas
+  const navItems = [
     {
       label: 'Overview',
       to: '/',
@@ -105,27 +88,10 @@ export default function TopNavbar({
       to: '/mps',
       icon: Users,
     },
-  ];
-
-  // Secondary Supporting Views
-  const secondaryNavItems = [
     {
-      label: 'Analytics Suite',
+      label: 'Analytics',
       to: '/analytics',
       icon: BarChart3,
-      desc: 'Cost spreads & utilization curves',
-    },
-    {
-      label: 'Data Sources & Lineage',
-      to: '/data-sources',
-      icon: Database,
-      desc: 'Empowered Indian & MoSPI feeds',
-    },
-    {
-      label: 'System Health & Diagnostics',
-      to: '/status',
-      icon: Activity,
-      desc: 'API probes & database connection',
     },
   ];
 
@@ -154,10 +120,10 @@ export default function TopNavbar({
             </Link>
           </div>
 
-          {/* 2. Center: Desktop Top Navigation Links (Centered Alignment) */}
+          {/* 2. Center: Desktop Top Navigation Links */}
           <div className="hidden lg:flex flex-1 items-center justify-center px-4">
             <nav className="flex items-center gap-1 xl:gap-1.5 p-1 bg-[#FAF7F2] rounded-2xl border border-[#D8CBB6] shadow-2xs">
-              {primaryNavItems.map((item) => {
+              {navItems.map((item) => {
                 const Icon = item.icon;
                 const isActive =
                   item.to === '/' ? path === '/' : path.startsWith(item.to);
@@ -181,50 +147,6 @@ export default function TopNavbar({
                   </Link>
                 );
               })}
-
-              {/* System / Secondary Dropdown */}
-              <div className="relative" ref={dropdownRef}>
-                <button
-                  onClick={() => setSystemDropdownOpen(!systemDropdownOpen)}
-                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer ${
-                    secondaryNavItems.some(i => path.startsWith(i.to))
-                      ? 'bg-[#E7DDCA] text-[#44312A] font-bold'
-                      : 'text-[#504F47] hover:text-[#44312A] hover:bg-[#E7DDCA]/40'
-                  }`}
-                >
-                  <span>System</span>
-                  <ChevronDown className="h-3 w-3 text-[#504F47]" />
-                </button>
-
-                {systemDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-64 bg-white border border-[#D8CBB6] rounded-2xl shadow-xl p-2 space-y-1 z-50 animate-in fade-in zoom-in-95 duration-100">
-                    {secondaryNavItems.map((sec) => {
-                      const SecIcon = sec.icon;
-                      const isSecActive = path.startsWith(sec.to);
-                      return (
-                        <Link
-                          key={sec.to}
-                          to={sec.to}
-                          onClick={() => setSystemDropdownOpen(false)}
-                          className={`flex items-start gap-2.5 p-2 rounded-xl transition ${
-                            isSecActive
-                              ? 'bg-[#FAF7F2] border border-[#D8CBB6] text-[#44312A]'
-                              : 'hover:bg-[#FAF7F2] text-[#504F47] hover:text-[#44312A]'
-                          }`}
-                        >
-                          <div className="p-1 rounded-lg bg-[#FAF7F2] border border-[#D8CBB6] mt-0.5">
-                            <SecIcon className="h-3.5 w-3.5 text-[#44312A]" />
-                          </div>
-                          <div>
-                            <div className="font-bold text-xs text-[#44312A]">{sec.label}</div>
-                            <div className="text-[10px] text-[#8C7769] leading-tight">{sec.desc}</div>
-                          </div>
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
             </nav>
           </div>
 
@@ -254,15 +176,14 @@ export default function TopNavbar({
               <span className="hidden md:inline">Sync Data</span>
             </button>
 
-            {/* Live Health Indicator Pill */}
-            <Link
-              to="/status"
-              className="hidden sm:flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-[#FAF7F2] border border-[#D8CBB6] text-[11px] font-mono font-semibold text-[#44312A] shadow-2xs hover:bg-[#E7DDCA] transition"
-              title="Click to inspect system telemetry"
+            {/* Live Status Indicator Pill */}
+            <div
+              className="hidden sm:flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-[#FAF7F2] border border-[#D8CBB6] text-[11px] font-mono font-semibold text-[#44312A] shadow-2xs"
+              title="Live backend connectivity status"
             >
               <span className={`h-2 w-2 rounded-full ${apiStatus.isOnline ? 'bg-[#44312A] animate-pulse' : 'bg-[#504F47]'}`} />
               <span>{apiStatus.isOnline ? `${apiStatus.latencyMs || 18}ms` : 'Offline'}</span>
-            </Link>
+            </div>
 
             {/* Mobile Hamburger Toggle */}
             <button
@@ -282,7 +203,7 @@ export default function TopNavbar({
           <div className="font-bold text-[10px] uppercase tracking-wider text-[#8C7769] px-3">
             Core Navigation
           </div>
-          {primaryNavItems.map((item) => {
+          {navItems.map((item) => {
             const Icon = item.icon;
             const isActive =
               item.to === '/' ? path === '/' : path.startsWith(item.to);
@@ -305,34 +226,9 @@ export default function TopNavbar({
               </Link>
             );
           })}
-
-          <div className="font-bold text-[10px] uppercase tracking-wider text-[#8C7769] px-3 pt-2">
-            Supporting System Views
-          </div>
-          {secondaryNavItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = path.startsWith(item.to);
-
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition ${
-                  isActive
-                    ? 'bg-[#44312A] text-[#E7DDCA]'
-                    : 'text-[#504F47] hover:bg-[#FAF7F2]'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Icon className="h-4 w-4" />
-                  <span>{item.label}</span>
-                </div>
-              </Link>
-            );
-          })}
         </div>
       )}
     </header>
   );
 }
+

@@ -40,7 +40,7 @@ def safe_float(val: Any) -> Optional[float]:
     """
     if val is None or pd.isna(val):
         return None
-    if isinstance(val, (int, float, np.number)):
+    if isinstance(val, (int, float, np.integer, np.floating)):
         if np.isnan(val) or np.isinf(val):
             return None
         return float(val)

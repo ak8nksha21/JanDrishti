@@ -14,23 +14,41 @@ router = APIRouter(prefix="/works", tags=["Works"])
 @router.get("", response_model=PaginatedWorksResponse)
 def get_works(
     page: int = Query(1, ge=1, description="Page number"),
-    limit: int = Query(20, ge=1, le=100, description="Items per page"),
+    limit: int = Query(20, ge=1, le=1000, description="Items per page"),
     constituency: Optional[str] = Query(None, description="Filter by constituency name (case-insensitive)"),
     state: Optional[str] = Query(None, description="Filter by state name (case-insensitive)"),
     category: Optional[str] = Query(None, description="Filter by category (case-insensitive)"),
+    mp_name: Optional[str] = Query(None, description="Filter by MP name (case-insensitive)"),
+    search: Optional[str] = Query(None, description="Search across work description, MP, constituency, state, or location"),
     db: Session = Depends(get_db)
 ):
     """
-    Retrieve paginated MPLADS works with optional filters for constituency, state, and category.
+    Retrieve paginated MPLADS works with optional filters for constituency, state, category, mp_name, and search query.
     """
     query = db.query(Work)
 
-    if constituency:
+    if constituency and constituency.strip():
         query = query.filter(Work.constituency.ilike(f"%{constituency.strip()}%"))
-    if state:
+    if state and state.strip():
         query = query.filter(Work.state.ilike(f"%{state.strip()}%"))
-    if category:
+    if mp_name and mp_name.strip():
+        query = query.filter(Work.mp_name.ilike(f"%{mp_name.strip()}%"))
+    if category and category.strip() and category.strip().lower() != "all":
         query = query.filter(Work.category.ilike(f"%{category.strip()}%"))
+    if search and search.strip():
+        search_terms = search.strip().split()
+        for term in search_terms:
+            query = query.filter(
+                or_(
+                    Work.work_description.ilike(f"%{term}%"),
+                    Work.mp_name.ilike(f"%{term}%"),
+                    Work.constituency.ilike(f"%{term}%"),
+                    Work.state.ilike(f"%{term}%"),
+                    Work.district.ilike(f"%{term}%"),
+                    Work.location.ilike(f"%{term}%"),
+                    Work.category.ilike(f"%{term}%"),
+                )
+            )
 
     total = query.count()
     total_pages = math.ceil(total / limit) if total > 0 else 0

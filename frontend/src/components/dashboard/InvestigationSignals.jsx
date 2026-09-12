@@ -31,13 +31,14 @@ export default function InvestigationSignals({ stats = null }) {
       status: 'Active',
       description: 'Auditing missing geospatial coordinates, incomplete beneficiary counts, and implementing agency omissions in source feeds.',
       icon: FileCheck,
-      actionText: 'Review Source Records',
-      to: '/data-sources',
+      actionText: 'Review Quality Signals',
+      to: '/works',
     },
+
     {
-      title: 'Payment & Utilization Divergence',
+      title: 'Aggregate Financial Execution Analysis',
       status: 'Active',
-      description: 'Comparing allocated parliamentary limits against reported total completed expenditures to prioritize unspent balance follow-ups.',
+      description: 'Portfolio-level financial execution analysis: comparing allocated parliamentary outlays against reported expenditures to monitor portfolio disbursement patterns (not transaction-level fraud detection).',
       icon: Database,
       actionText: 'Inspect MP Ratios',
       to: '/mps',

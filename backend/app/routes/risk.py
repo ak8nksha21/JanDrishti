@@ -151,6 +151,8 @@ def get_risk_works(
     risk_level: Optional[str] = None,
     category: Optional[str] = None,
     constituency: Optional[str] = None,
+    state: Optional[str] = None,
+    mp_name: Optional[str] = None,
     search: Optional[str] = None,
     sort_by: str = Query("risk_desc", pattern="^(risk_desc|cost_desc|date_desc)$"),
     page: int = Query(1, ge=1),
@@ -171,6 +173,10 @@ def get_risk_works(
         if risk_level and r_level.lower() != risk_level.lower():
             continue
         if category and w.category and category.lower() not in w.category.lower():
+            continue
+        if state and w.state and state.lower() not in w.state.lower():
+            continue
+        if mp_name and w.mp_name and mp_name.lower() not in w.mp_name.lower():
             continue
         if constituency and w.constituency:
             c_query = constituency.strip().lower()

@@ -57,13 +57,15 @@ export default function AgencyBenchmarks({ onSyncSuccess }) {
         <div>
           <div className="flex items-center space-x-2">
             <Database className="w-5 h-5 text-[#E7DDCA]" />
-            <span className="font-bold text-sm font-display">Official MoSPI eSAKSHI National Dataset (2023–Present)</span>
-            <span className="bg-[#FAF7F2]/10 text-[#E7DDCA] px-2 py-0.5 rounded text-[10px] font-semibold border border-[#D8CBB6]/30">
-              60,359 Real Works
-            </span>
+            <span className="font-bold text-sm font-display">Official MoSPI eSAKSHI National Dataset Benchmarks</span>
+            {stats && stats.total_records && (
+              <span className="bg-[#FAF7F2]/10 text-[#E7DDCA] px-2 py-0.5 rounded text-[10px] font-semibold border border-[#D8CBB6]/30">
+                {stats.total_records.toLocaleString()} Benchmark Records
+              </span>
+            )}
           </div>
           <p className="text-[#E7DDCA]/80 text-xs mt-1">
-            Work-level records sourced from the official eSAKSHI portal across 33 States, 456 Constituencies, and 699 Implementing District Authorities (IDAs).
+            Macro scheme benchmarks, sanction distributions, and Implementing District Authority (IDA) analytics aligned with official MoSPI e-SAKSHI releases.
           </p>
         </div>
 
@@ -80,7 +82,7 @@ export default function AgencyBenchmarks({ onSyncSuccess }) {
           <div className="p-3.5 bg-white rounded-2xl border border-[#D8CBB6] shadow-xs">
             <span className="text-[10px] uppercase font-bold text-[#504F47]">Total Sanctioned Works</span>
             <div className="text-xl font-black text-[#44312A] mt-1 font-mono">{stats.total_records.toLocaleString()}</div>
-            <span className="text-[10px] text-[#8C7769]">Across 33 States</span>
+            <span className="text-[10px] text-[#8C7769]">National Scheme Scope</span>
           </div>
           <div className="p-3.5 bg-white rounded-2xl border border-[#D8CBB6] shadow-xs">
             <span className="text-[10px] uppercase font-bold text-[#504F47]">Total Allocation</span>

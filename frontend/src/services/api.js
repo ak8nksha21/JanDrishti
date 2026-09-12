@@ -157,6 +157,12 @@ export async function getWorks(params = {}) {
   ) {
     cleanParams.category = params.category.trim();
   }
+  if (typeof params.mp_name === 'string' && params.mp_name.trim()) {
+    cleanParams.mp_name = params.mp_name.trim();
+  }
+  if (typeof params.search === 'string' && params.search.trim()) {
+    cleanParams.search = params.search.trim();
+  }
 
   const response = await api.get('/works', { params: cleanParams });
   return response.data;
@@ -317,6 +323,19 @@ export async function triggerSync(options = {}) {
   if (options.max_pages) params.max_pages = options.max_pages;
 
   const response = await api.post('/sync', null, { params });
+  return response.data;
+}
+
+/**
+ * 16. Trend Intelligence (GET /api/trends/summary, GET /api/trends/completion)
+ */
+export async function fetchTrendSummary(params = {}) {
+  const response = await api.get('/trends/summary', { params });
+  return response.data;
+}
+
+export async function fetchCompletionTrend(params = {}) {
+  const response = await api.get('/trends/completion', { params });
   return response.data;
 }
 

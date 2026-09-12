@@ -295,6 +295,39 @@ def _try_risk_engine(work: Work, db: Session, signals: Dict[str, float]) -> Opti
     return None
 
 
+def _try_cost_overrun_detector(work: Any) -> Optional[Dict[str, Any]]:
+    """Safe delegation hook for CostOverrunDetector."""
+    try:
+        from ml.cost_overrun import CostOverrunDetector
+        detector = CostOverrunDetector()
+        return detector.evaluate_work(work)
+    except Exception as e:
+        logger.debug(f"CostOverrunDetector adapter error: {e}")
+        return None
+
+
+def _try_delay_detector(work: Any) -> Optional[Dict[str, Any]]:
+    """Safe delegation hook for DelayDetector."""
+    try:
+        from ml.delay_detection import DelayDetector
+        detector = DelayDetector()
+        return detector.evaluate_work(work)
+    except Exception as e:
+        logger.debug(f"DelayDetector adapter error: {e}")
+        return None
+
+
+def _try_payment_anomaly_detector(record: Any) -> Optional[Dict[str, Any]]:
+    """Safe delegation hook for PaymentAnomalyDetector."""
+    try:
+        from ml.payment_anomaly import PaymentAnomalyDetector
+        detector = PaymentAnomalyDetector()
+        return detector.evaluate_record(record)
+    except Exception as e:
+        logger.debug(f"PaymentAnomalyDetector adapter error: {e}")
+        return None
+
+
 class InvestigationTools:
     """
     Structured investigation toolset for JanDrishti.

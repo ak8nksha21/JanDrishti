@@ -86,11 +86,12 @@ export default function SystemHealthRiskPanel({
       badgeVariant: 'outline',
       description:
         'Verifies record completeness including implementing agency attribution, photo documentation metadata, and citizen beneficiary counts.',
-      scope: 'Ingestion Audit',
-      actionText: 'Data Sources',
-      link: '/data-sources',
+      scope: 'Record Audit',
+      actionText: 'Inspect Works',
+      link: '/works',
     },
   ];
+
 
   return (
     <div className="space-y-6">
