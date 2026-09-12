@@ -19,6 +19,7 @@ from app.routes.duplicates import router as duplicates_router
 from app.routes.geo import router as geo_router
 from app.routes.data_quality import router as data_quality_router
 from app.routes.trends import router as trends_router
+from app.routes.constituencies import router as constituencies_router
 
 # Configure logging
 logging.basicConfig(
@@ -73,6 +74,7 @@ app.include_router(duplicates_router, prefix="/api")
 app.include_router(geo_router, prefix="/api")
 app.include_router(data_quality_router, prefix="/api")
 app.include_router(trends_router, prefix="/api")
+app.include_router(constituencies_router, prefix="/api")
 
 
 @app.get("/")

@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Briefcase, Users, ArrowRight, X, Loader2 } from 'lucide-react';
+import { Search, Briefcase, Users, Landmark, ArrowRight, X, Loader2 } from 'lucide-react';
 import { useRouter } from '../../router/Router';
 import { fetchWorks } from '../../services/works';
 import { fetchMPs } from '../../services/mps';
+import { fetchConstituencies } from '../../services/constituencies';
 import { formatCroresLakhs } from '../../utils/formatting';
 
 export default function GlobalSearchModal({ isOpen, onClose }) {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState({ works: [], mps: [] });
+  const [results, setResults] = useState({ works: [], mps: [], constituencies: [] });
   const inputRef = useRef(null);
   const { navigate } = useRouter();
 
@@ -17,7 +18,7 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
       setTimeout(() => inputRef.current?.focus(), 50);
     } else {
       setQuery('');
-      setResults({ works: [], mps: [] });
+      setResults({ works: [], mps: [], constituencies: [] });
     }
   }, [isOpen]);
 
@@ -40,7 +41,7 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
   useEffect(() => {
     const clean = query.trim();
     if (clean.length < 2) {
-      setResults({ works: [], mps: [] });
+      setResults({ works: [], mps: [], constituencies: [] });
       setLoading(false);
       return;
     }
@@ -48,15 +49,17 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
     const timer = setTimeout(async () => {
       setLoading(true);
       try {
-        const [worksRes, mpsRes] = await Promise.allSettled([
-          fetchWorks({ constituency: clean, limit: 5 }),
-          fetchMPs({ constituency: clean, limit: 5 }),
+        const [worksRes, mpsRes, constRes] = await Promise.allSettled([
+          fetchWorks({ constituency: clean, limit: 4 }),
+          fetchMPs({ constituency: clean, limit: 4 }),
+          fetchConstituencies({ search: clean, limit: 4 }),
         ]);
 
         const worksList = worksRes.status === 'fulfilled' ? worksRes.value.items || [] : [];
         const mpsList = mpsRes.status === 'fulfilled' ? mpsRes.value.items || [] : [];
+        const constList = constRes.status === 'fulfilled' ? constRes.value.items || [] : [];
 
-        setResults({ works: worksList, mps: mpsList });
+        setResults({ works: worksList, mps: mpsList, constituencies: constList });
       } catch (err) {
         console.warn('Global search query error:', err);
       } finally {
@@ -77,6 +80,11 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
   const handleSelectMP = (mpId) => {
     onClose();
     navigate(`/mps/${mpId}`);
+  };
+
+  const handleSelectConstituency = (constituencyId) => {
+    onClose();
+    navigate(`/constituencies/${constituencyId}`);
   };
 
   const handleSearchAllWorks = () => {
@@ -123,13 +131,59 @@ export default function GlobalSearchModal({ isOpen, onClose }) {
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {query.trim().length < 2 && (
             <div className="py-8 text-center text-[#504F47] text-xs">
-              Type at least 2 characters to search across live works, MPs, and constituencies.
+              Type at least 2 characters to search across live constituencies, works, and MPs.
             </div>
           )}
 
-          {query.trim().length >= 2 && !loading && results.works.length === 0 && results.mps.length === 0 && (
-            <div className="py-8 text-center text-[#504F47] text-xs">
-              No matching records found for "{query}". Try searching a constituency like "SHAHJAHANPUR" or "Gorakhpur".
+          {query.trim().length >= 2 &&
+            !loading &&
+            results.works.length === 0 &&
+            results.mps.length === 0 &&
+            results.constituencies.length === 0 && (
+              <div className="py-8 text-center text-[#504F47] text-xs">
+                No matching records found for "{query}". Try searching a constituency like "SHAHJAHANPUR" or "Gorakhpur".
+              </div>
+            )}
+
+          {/* Constituencies Section */}
+          {results.constituencies.length > 0 && (
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-[#504F47] px-2 mb-2 flex items-center gap-1.5">
+                <Landmark className="h-3 w-3 text-[#44312A]" />
+                <span>Constituency Digital Twins ({results.constituencies.length})</span>
+              </div>
+              <div className="space-y-1">
+                {results.constituencies.map((c) => (
+                  <div
+                    key={c.id}
+                    onClick={() => handleSelectConstituency(c.id)}
+                    className="flex items-center justify-between p-2.5 rounded-xl hover:bg-[#E7DDCA]/50 cursor-pointer group transition border border-transparent hover:border-[#D8CBB6]"
+                  >
+                    <div>
+                      <div className="text-xs font-bold text-[#44312A] group-hover:text-[#44312A] transition-colors flex items-center gap-2">
+                        <span>{c.constituency}</span>
+                        <span className="text-[10px] font-mono font-medium px-1.5 py-0.2 rounded bg-[#E7DDCA] text-[#44312A]">
+                          {c.house || 'Lok Sabha'}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-[#504F47] flex items-center gap-2 mt-0.5">
+                        <span className="text-[#44312A] font-medium">{c.state}</span>
+                        {c.mp_name && (
+                          <>
+                            <span>•</span>
+                            <span>Rep: {c.mp_name}</span>
+                          </>
+                        )}
+                        <span>•</span>
+                        <span className="font-mono text-[#44312A] font-semibold">
+                          {c.utilization_pct?.toFixed(1) || '0.0'}% utilization
+                        </span>
+                      </div>
+                    </div>
+                    <ArrowRight className="h-3.5 w-3.5 text-[#8C7769] group-hover:text-[#44312A] transition-colors" />
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

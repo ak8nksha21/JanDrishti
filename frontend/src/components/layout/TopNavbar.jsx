@@ -4,6 +4,7 @@ import {
   Briefcase,
   Users,
   BarChart3,
+  Landmark,
   Search,
   RefreshCw,
   Menu,
@@ -77,6 +78,11 @@ export default function TopNavbar({
       label: 'Overview',
       to: '/',
       icon: LayoutDashboard,
+    },
+    {
+      label: 'Constituency Intelligence',
+      to: '/constituencies',
+      icon: Landmark,
     },
     {
       label: 'Works Explorer',

@@ -349,4 +349,32 @@ export async function fetchCompletionTrend(params = {}) {
   return response.data;
 }
 
+/**
+ * 17. Constituency Digital Twin (GET /api/constituencies)
+ */
+export async function fetchConstituencies(params = {}) {
+  const response = await api.get('/constituencies', { params });
+  return response.data;
+}
+
+export async function fetchConstituencyById(constituencyId) {
+  const response = await api.get(`/constituencies/${encodeURIComponent(constituencyId)}`);
+  return response.data;
+}
+
+export async function fetchConstituencyWorks(constituencyId, params = {}) {
+  const response = await api.get(`/constituencies/${encodeURIComponent(constituencyId)}/works`, { params });
+  return response.data;
+}
+
+export async function fetchConstituencySignals(constituencyId) {
+  const response = await api.get(`/constituencies/${encodeURIComponent(constituencyId)}/signals`);
+  return response.data;
+}
+
+export async function fetchConstituencySnapshot(constituencyId) {
+  const response = await api.get(`/constituencies/${encodeURIComponent(constituencyId)}/export`);
+  return response.data;
+}
+
 export default api;
