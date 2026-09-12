@@ -145,6 +145,7 @@ export default function WorkDetails({ workId: propWorkId }) {
         return { label: 'Elevated Duration', variant: 'warning', textClass: 'text-[#6B5145]' };
       case 'critical_delay':
       case 'unusually_long_duration':
+      case 'unusually_long_execution_duration':
         return { label: 'Unusually Long Duration', variant: 'destructive', textClass: 'text-[#44312A]' };
       case 'insufficient_data':
       default:
@@ -159,7 +160,7 @@ export default function WorkDetails({ workId: propWorkId }) {
       case 'balanced':
         return { label: 'Normal Execution', variant: 'default', textClass: 'text-[#44312A]' };
       case 'moderate_discrepancy':
-        return { label: 'Moderate Discrepancy', variant: 'warning', textClass: 'text-[#6B5145]' };
+        return { label: 'Moderate Portfolio-Level Discrepancy', variant: 'warning', textClass: 'text-[#6B5145]' };
       case 'elevated_payment_gap':
       case 'disproportionate_expenditure':
         return { label: 'Elevated Gap Signal', variant: 'warning', textClass: 'text-[#6B5145]' };
@@ -226,7 +227,7 @@ export default function WorkDetails({ workId: propWorkId }) {
           {work.work_description || 'Completed MPLADS Infrastructure Project'}
         </h1>
 
-        {work.work_description_hi && (
+        {work.work_description_hi && work.work_description_hi !== work.work_description && (
           <p className="text-xs text-[#504F47] font-sans leading-relaxed">
             {work.work_description_hi}
           </p>
@@ -254,7 +255,7 @@ export default function WorkDetails({ workId: propWorkId }) {
               <div className="flex items-center gap-2.5">
                 <span className="text-xs text-[#504F47]">Overall Risk Rating:</span>
                 <span className="font-mono text-base font-black text-[#44312A]">
-                  {riskScore.overall_score !== null ? `${Number(riskScore.overall_score).toFixed(1)} / 100` : 'N/A'}
+                  {riskScore.overall_score !== null && riskScore.overall_score !== undefined ? `${Number(riskScore.overall_score).toFixed(1)} / 100` : 'Insufficient Data'}
                 </span>
                 <Badge variant={riskScore.overall_score >= 60 ? 'warning' : 'default'} size="sm">
                   {riskScore.risk_level || 'Low Risk'}
@@ -270,7 +271,7 @@ export default function WorkDetails({ workId: propWorkId }) {
                   ML Anomaly (25%)
                 </span>
                 <span className="text-sm font-black font-mono text-[#44312A]">
-                  {riskScore.ml_anomaly_score !== null ? Number(riskScore.ml_anomaly_score).toFixed(1) : 'N/A'}
+                  {riskScore.ml_anomaly_score !== null && riskScore.ml_anomaly_score !== undefined ? Number(riskScore.ml_anomaly_score).toFixed(1) : 'Insufficient Data'}
                 </span>
               </div>
               <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#D8CBB6] space-y-1">
@@ -278,7 +279,7 @@ export default function WorkDetails({ workId: propWorkId }) {
                   Cost Anomaly (25%)
                 </span>
                 <span className="text-sm font-black font-mono text-[#44312A]">
-                  {riskScore.cost_score !== null ? Number(riskScore.cost_score).toFixed(1) : 'N/A'}
+                  {riskScore.cost_score !== null && riskScore.cost_score !== undefined ? Number(riskScore.cost_score).toFixed(1) : 'Insufficient Data'}
                 </span>
               </div>
               <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#D8CBB6] space-y-1">
@@ -286,7 +287,7 @@ export default function WorkDetails({ workId: propWorkId }) {
                   Duplicate (20%)
                 </span>
                 <span className="text-sm font-black font-mono text-[#44312A]">
-                  {riskScore.duplicate_score !== null ? Number(riskScore.duplicate_score).toFixed(1) : 'N/A'}
+                  {riskScore.duplicate_score !== null && riskScore.duplicate_score !== undefined ? Number(riskScore.duplicate_score).toFixed(1) : 'Insufficient Data'}
                 </span>
               </div>
               <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#D8CBB6] space-y-1">
@@ -294,7 +295,7 @@ export default function WorkDetails({ workId: propWorkId }) {
                   Utilization Gap (15%)
                 </span>
                 <span className="text-sm font-black font-mono text-[#44312A]">
-                  {riskScore.utilization_score !== null ? Number(riskScore.utilization_score).toFixed(1) : 'N/A'}
+                  {riskScore.utilization_score !== null && riskScore.utilization_score !== undefined ? Number(riskScore.utilization_score).toFixed(1) : 'Insufficient Data'}
                 </span>
               </div>
               <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#D8CBB6] space-y-1">
@@ -302,7 +303,7 @@ export default function WorkDetails({ workId: propWorkId }) {
                   Geographic (10%)
                 </span>
                 <span className="text-sm font-black font-mono text-[#44312A]">
-                  {riskScore.geographic_score !== null ? Number(riskScore.geographic_score).toFixed(1) : 'N/A'}
+                  {riskScore.geographic_score !== null && riskScore.geographic_score !== undefined ? Number(riskScore.geographic_score).toFixed(1) : 'Insufficient Data'}
                 </span>
               </div>
               <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#D8CBB6] space-y-1">
@@ -310,7 +311,7 @@ export default function WorkDetails({ workId: propWorkId }) {
                   Data Quality (5%)
                 </span>
                 <span className="text-sm font-black font-mono text-[#44312A]">
-                  {riskScore.data_quality_score !== null ? Number(riskScore.data_quality_score).toFixed(1) : 'N/A'}
+                  {riskScore.data_quality_score !== null && riskScore.data_quality_score !== undefined ? Number(riskScore.data_quality_score).toFixed(1) : 'Insufficient Data'}
                 </span>
               </div>
             </div>
@@ -367,7 +368,7 @@ export default function WorkDetails({ workId: propWorkId }) {
 
                 <p className="text-[11px] text-[#504F47] leading-relaxed">
                   {costOverrun?.overrun_status === 'insufficient_data'
-                    ? 'Verified sanctioned-cost baseline unavailable for work-level budgetary overrun analysis.'
+                    ? 'Verified sanctioned baseline is available, but independent work-level actual expenditure is unavailable for a verified budget-overrun calculation.'
                     : costOverrun?.evidence && costOverrun.evidence.length > 0
                     ? costOverrun.evidence[0]
                     : 'Actual expenditure conforms to sanctioned baseline limit.'}
@@ -376,17 +377,23 @@ export default function WorkDetails({ workId: propWorkId }) {
 
               <div className="pt-2.5 border-t border-[#D8CBB6] space-y-1 text-[11px]">
                 <div className="flex justify-between text-[#504F47]">
-                  <span>Sanctioned Baseline:</span>
+                  <span>Verified Sanctioned Baseline:</span>
                   <strong className="font-mono text-[#44312A]">
-                    {costOverrun?.sanctioned_cost ? formatCroresLakhs(costOverrun.sanctioned_cost).compact : 'Unavailable'}
+                    {costOverrun?.sanctioned_cost ? formatCroresLakhs(costOverrun.sanctioned_cost).compact : 'Insufficient Data'}
                   </strong>
                 </div>
                 <div className="flex justify-between text-[#504F47]">
-                  <span>Reported Overrun:</span>
+                  <span>Reported Completed Cost:</span>
                   <strong className="font-mono text-[#44312A]">
-                    {costOverrun?.overrun_amount !== null && costOverrun?.overrun_amount !== undefined
-                      ? `₹${Number(costOverrun.overrun_amount).toLocaleString('en-IN')}`
-                      : 'N/A (No Baseline)'}
+                    {costFormatted ? costFormatted.compact : 'Insufficient Data'}
+                  </strong>
+                </div>
+                <div className="flex justify-between text-[#504F47]">
+                  <span>Independent Actual Expenditure:</span>
+                  <strong className="font-mono text-[#44312A]">
+                    {costOverrun?.actual_expenditure !== null && costOverrun?.actual_expenditure !== undefined
+                      ? formatCroresLakhs(costOverrun.actual_expenditure).compact
+                      : 'Unavailable'}
                   </strong>
                 </div>
                 <div className="text-[9px] text-[#8C7769] font-mono pt-1">
@@ -423,7 +430,23 @@ export default function WorkDetails({ workId: propWorkId }) {
                   <strong className="font-mono text-[#44312A]">
                     {delayAnalysis?.duration_days !== null && delayAnalysis?.duration_days !== undefined
                       ? `${delayAnalysis.duration_days} Days`
+                      : 'Insufficient Data'}
+                  </strong>
+                </div>
+                <div className="flex justify-between text-[#504F47]">
+                  <span>Administrative Approval:</span>
+                  <strong className="font-mono text-[#44312A]">
+                    {delayAnalysis?.sanction_date
+                      ? formatDate(delayAnalysis.sanction_date)
+                      : work.official_sanction_date
+                      ? formatDate(work.official_sanction_date)
                       : 'Unavailable'}
+                  </strong>
+                </div>
+                <div className="flex justify-between text-[#504F47]">
+                  <span>Completion:</span>
+                  <strong className="font-mono text-[#44312A]">
+                    {formatDate(work.completion_date || delayAnalysis?.completion_date || work.completion_year)}
                   </strong>
                 </div>
                 <div className="flex justify-between text-[#504F47]">
@@ -431,14 +454,15 @@ export default function WorkDetails({ workId: propWorkId }) {
                   <strong className="font-mono text-[#44312A]">
                     {delayAnalysis?.peer_median_days !== null && delayAnalysis?.peer_median_days !== undefined
                       ? `${delayAnalysis.peer_median_days} Days`
-                      : 'Baseline Active'}
+                      : 'Insufficient Historical Data'}
                   </strong>
                 </div>
                 <div className="text-[9px] text-[#8C7769] font-mono pt-1">
-                  Temporal Audit • Requires Verified Sanction Date
+                  Temporal Audit • Derived from Official Sanction & Completion Dates
                 </div>
               </div>
             </div>
+
 
             {/* 3. Payment & Execution Anomaly */}
             <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#D8CBB6] flex flex-col justify-between space-y-3">
@@ -466,7 +490,7 @@ export default function WorkDetails({ workId: propWorkId }) {
                   <strong className="font-mono text-[#44312A]">
                     {paymentAnomaly?.metrics?.utilization_percentage !== undefined && paymentAnomaly?.metrics?.utilization_percentage !== null
                       ? `${Number(paymentAnomaly.metrics.utilization_percentage).toFixed(1)}%`
-                      : 'N/A'}
+                      : 'Insufficient Data'}
                   </strong>
                 </div>
                 <div className="flex justify-between text-[#504F47]">
@@ -474,11 +498,11 @@ export default function WorkDetails({ workId: propWorkId }) {
                   <strong className="font-mono text-[#44312A]">
                     {paymentAnomaly?.metrics?.completion_rate !== undefined && paymentAnomaly?.metrics?.completion_rate !== null
                       ? `${Number(paymentAnomaly.metrics.completion_rate).toFixed(1)}%`
-                      : 'N/A'}
+                      : 'Insufficient Data'}
                   </strong>
                 </div>
                 <div className="text-[9px] text-[#8C7769] font-mono pt-1">
-                  Aggregate Financial Signal • Not Transaction Audit
+                  Portfolio-Level Financial Signal • Not a Work-Level Transaction Audit
                 </div>
               </div>
             </div>
@@ -542,8 +566,8 @@ export default function WorkDetails({ workId: propWorkId }) {
         {/* 2. Financial Overview */}
         <Card>
           <CardHeader>
-            <CardTitle>Financial Verification</CardTitle>
-            <CardDescription>Audited completed expenditure and payment records</CardDescription>
+            <CardTitle>Financial Record Summary</CardTitle>
+            <CardDescription>Reported project cost and available financial evidence</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 text-xs">
             <div className="flex justify-between py-2 border-b border-[#D8CBB6]">
@@ -602,8 +626,8 @@ export default function WorkDetails({ workId: propWorkId }) {
         {/* 4. Source & Provenance */}
         <Card>
           <CardHeader>
-            <CardTitle>Data Provenance & Audit</CardTitle>
-            <CardDescription>Official lineage and cryptographic ingestion audit</CardDescription>
+            <CardTitle>Data Provenance & Ingestion</CardTitle>
+            <CardDescription>Source lineage and ingestion metadata</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 text-xs">
             <div className="flex justify-between py-2 border-b border-[#D8CBB6]">
@@ -645,7 +669,7 @@ export default function WorkDetails({ workId: propWorkId }) {
             </span>
           </div>
           <CardDescription>
-            Interactive GIS satellite positioning of the sanctioned infrastructure.
+            Interactive GIS positioning of the reported project location.
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-2">
@@ -664,7 +688,7 @@ export default function WorkDetails({ workId: propWorkId }) {
         <AlertCircle className="h-4 w-4 text-[#44312A] shrink-0 mt-0.5" />
         <p className="leading-relaxed">
           <strong className="text-[#44312A]">Investigation Support Notice: </strong>
-          {RISK_DISCLAIMER} All identifiers and cost figures reflect public legislative releases.
+          {RISK_DISCLAIMER} All identifiers, costs, and dates reflect the available public administrative records and their stated source.
         </p>
       </div>
 

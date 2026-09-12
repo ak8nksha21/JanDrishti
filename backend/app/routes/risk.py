@@ -435,20 +435,81 @@ def get_work_risk_detail(work_id: str, db: Session = Depends(get_db)):
         or_(SimilarWork.work_id == wid, SimilarWork.matched_work_id == wid)
     ).all()
 
+    # Retrieve official sanction baseline from enrichment service
+    from app.services.enrichment.esakshi import official_sanction_service
+    sanction_info = official_sanction_service.get_sanction_info(wid)
+
+    # Prepare work data dictionary for supplementary detectors
+    work_eval_data = {
+        "work_id": wid,
+        "id": work.id,
+        "cost": float(work.cost or 0.0),
+        "reported_completed_cost": float(work.cost or 0.0),
+        "completion_date": work.completion_date,
+        "category": work.category,
+        "district": work.district,
+        "state": work.state,
+        "constituency": work.constituency,
+        "actual_expenditure": None,  # Independent actual expenditure is currently unavailable
+    }
+
+    if sanction_info:
+        work_eval_data["official_sanction_amount"] = sanction_info.get("official_sanction_amount")
+        work_eval_data["sanctioned_cost"] = sanction_info.get("official_sanction_amount")
+        work_eval_data["official_sanction_date"] = sanction_info.get("official_sanction_date")
+        work_eval_data["sanction_date"] = sanction_info.get("official_sanction_date")
+        work_eval_data["official_sanction_source"] = sanction_info.get("official_sanction_source")
+        work_eval_data["official_sanction_field"] = sanction_info.get("official_sanction_field")
+        work_eval_data["official_sanction_work_number"] = sanction_info.get("official_sanction_work_number")
+        work_eval_data["official_sanction_verified"] = sanction_info.get("official_sanction_verified", True)
+
     # Evaluate Supplementary Intelligence Detectors
     from ml.cost_overrun import CostOverrunDetector
     from ml.delay_detection import DelayDetector
     from ml.payment_anomaly import PaymentAnomalyDetector
 
-    cost_overrun_eval = CostOverrunDetector().evaluate_work(work)
-    delay_eval = DelayDetector().evaluate_work(work)
+    cost_overrun_eval = CostOverrunDetector().evaluate_work(work_eval_data)
+
+    # Fit DelayDetector on peer distribution of completed works with official dates
+    delay_detector = DelayDetector()
+    all_works = db.query(Work).all()
+    fit_records = []
+    for w_item in all_works:
+        w_item_wid = get_work_id_str(w_item)
+        s_item_info = official_sanction_service.get_sanction_info(w_item_wid)
+        if s_item_info and s_item_info.get("official_sanction_date") and w_item.completion_date:
+            fit_records.append({
+                "sanction_date": s_item_info["official_sanction_date"],
+                "completion_date": w_item.completion_date,
+                "category": w_item.category,
+                "district": w_item.district,
+            })
+    if fit_records:
+        delay_detector.fit(fit_records)
+
+    delay_eval = delay_detector.evaluate_work(work_eval_data)
 
     mp = None
-    if work.constituency:
-        mp = db.query(MPFinancialSummary).filter(MPFinancialSummary.constituency.ilike(f"%{work.constituency.strip()}%")).first()
-    if not mp and work.mp_name:
+    if work.mp_name:
         mp = db.query(MPFinancialSummary).filter(MPFinancialSummary.mp_name.ilike(f"%{work.mp_name.strip()}%")).first()
+    if not mp and work.constituency:
+        mp = db.query(MPFinancialSummary).filter(MPFinancialSummary.constituency.ilike(f"%{work.constituency.strip()}%")).first()
     payment_eval = PaymentAnomalyDetector().evaluate_record(mp or work)
+
+    from app.services.agent.agent import InvestigationAgent
+    investigation = InvestigationAgent(db=db).investigate(work)
+    sig = investigation.signal_breakdown
+    risk_score_dict = {
+        "overall_score": investigation.overall_score,
+        "risk_level": investigation.risk_level,
+        "cost_score": sig.cost_score,
+        "duplicate_score": sig.duplicate_score,
+        "ml_anomaly_score": sig.ml_anomaly_score,
+        "utilization_score": sig.utilization_score,
+        "geographic_score": sig.geographic_score,
+        "data_quality_score": sig.data_quality_score,
+        "flags": (r.flags_json if r and r.flags_json else [reason for reason in investigation.primary_reasons if reason != "Project indicators align with standard historical execution baselines."])
+    }
 
     return {
         "work": {
@@ -466,19 +527,16 @@ def get_work_risk_detail(work_id: str, db: Session = Depends(get_db)):
             "longitude": work.longitude,
             "implementing_agency": work.implementing_agency,
             "quality_rating": work.quality_rating,
-            "source": work.source
+            "source": work.source,
+            "completion_date": str(work.completion_date) if work.completion_date else None,
+            "official_sanction_amount": sanction_info.get("official_sanction_amount") if sanction_info else None,
+            "official_sanction_date": sanction_info.get("official_sanction_date") if sanction_info else None,
+            "official_sanction_source": sanction_info.get("official_sanction_source") if sanction_info else None,
+            "official_sanction_field": sanction_info.get("official_sanction_field") if sanction_info else None,
+            "official_sanction_work_number": sanction_info.get("official_sanction_work_number") if sanction_info else None,
+            "official_sanction_verified": sanction_info.get("official_sanction_verified") if sanction_info else False,
         },
-        "risk_score": {
-            "overall_score": r.overall_score if r else 15.0,
-            "risk_level": r.risk_level if r else "Low",
-            "cost_score": r.cost_score if r else 0.0,
-            "duplicate_score": r.duplicate_score if r else 0.0,
-            "ml_anomaly_score": r.ml_anomaly_score if r else 0.0,
-            "utilization_score": r.utilization_score if r else 0.0,
-            "geographic_score": r.geographic_score if r else 0.0,
-            "data_quality_score": r.data_quality_score if r else 0.0,
-            "flags": r.flags_json if r and r.flags_json else []
-        },
+        "risk_score": risk_score_dict,
         "similar_works_count": len(similar),
         "advanced_signals": {
             "cost_overrun": cost_overrun_eval,
@@ -486,6 +544,7 @@ def get_work_risk_detail(work_id: str, db: Session = Depends(get_db)):
             "payment_anomaly": payment_eval,
         }
     }
+
 
 
 @router.post("/calculate", summary="Trigger full risk calculation pipeline across database")

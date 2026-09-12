@@ -59,7 +59,7 @@ class InvestigationAgent:
             ml_anomaly_score = round(min(100.0, max(5.0, cost_score * 0.95 + (10.0 if not quality_res.get("checks_detail", {}).get("cost") else 0.0))), 1)
         duplicate_score = dup_res.get("duplicate_score", 10.0)
         utilization_score = mp_res.get("utilization_score", 20.0)
-        geographic_score = geo_res.get("geographic_score", 15.0)
+        geographic_score = geo_res.get("geographic_score")
         data_quality_score = quality_res.get("data_quality_score", 0.0)
 
         signals = {

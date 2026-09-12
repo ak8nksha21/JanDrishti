@@ -192,8 +192,14 @@ export default function InvestigationModal({ workId, onClose, onUpdateStatus }) 
                         Composite Risk
                       </span>
                       <div className="text-2xl font-black font-mono text-[#44312A]">
-                        {result.overall_score?.toFixed(1) || '0.0'}
-                        <span className="text-xs text-[#504F47] font-normal"> / 100</span>
+                        {result.overall_score !== undefined && result.overall_score !== null ? (
+                          <>
+                            {Number(result.overall_score).toFixed(1)}
+                            <span className="text-xs text-[#504F47] font-normal"> / 100</span>
+                          </>
+                        ) : (
+                          <span className="text-sm font-bold">Insufficient Data</span>
+                        )}
                       </div>
                     </div>
                     <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border flex items-center gap-1.5 ${badgeConfig.bg}`}>
@@ -214,7 +220,7 @@ export default function InvestigationModal({ workId, onClose, onUpdateStatus }) 
                     <strong className="text-[#44312A] truncate block">{result.constituency || 'N/A'}, {result.state || ''}</strong>
                   </div>
                   <div>
-                    <span className="text-[10px] block text-[#8C7769]">Sanctioned Cost:</span>
+                    <span className="text-[10px] block text-[#8C7769]">Reported Completed Cost:</span>
                     <strong className="text-[#44312A] font-mono block">
                       {costFormatted ? costFormatted.compact : 'N/A'}
                     </strong>
@@ -329,13 +335,13 @@ export default function InvestigationModal({ workId, onClose, onUpdateStatus }) 
                           <div className="flex items-center justify-between text-xs mb-1">
                             <span className="text-[#504F47] font-medium">Risk Signal:</span>
                             <span className="font-mono font-bold text-[#44312A]">
-                              {scoreVal !== null ? `${scoreVal.toFixed(1)} / 100` : 'N/A'}
+                              {scoreVal !== null ? `${scoreVal.toFixed(1)} / 100` : 'Insufficient Data'}
                             </span>
                           </div>
                           <div className="w-full bg-[#E7DDCA] rounded-full h-1.5 overflow-hidden">
                             <div
                               className="h-1.5 rounded-full bg-[#44312A]"
-                              style={{ width: `${Math.min(100, scoreVal || 0)}%` }}
+                              style={{ width: `${Math.min(100, scoreVal !== null ? scoreVal : 0)}%` }}
                             />
                           </div>
                         </div>

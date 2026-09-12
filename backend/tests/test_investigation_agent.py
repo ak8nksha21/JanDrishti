@@ -144,8 +144,12 @@ class TestInvestigationAgent(unittest.TestCase):
         self.assertIn("coordinates_available", res)
         self.assertIn("geographic_score", res)
         self.assertEqual(res.get("engine_mode"), "geographic_validator")
-        self.assertGreaterEqual(res["geographic_score"], 0.0)
-        self.assertLessEqual(res["geographic_score"], 100.0)
+        if res["coordinates_available"]:
+            self.assertIsNotNone(res["geographic_score"])
+            self.assertGreaterEqual(res["geographic_score"], 0.0)
+            self.assertLessEqual(res["geographic_score"], 100.0)
+        else:
+            self.assertIsNone(res["geographic_score"])
 
     # =========================================================================
     # 8. Tool 8: get_risk_breakdown & PRD weights
@@ -240,7 +244,7 @@ class TestInvestigationAgent(unittest.TestCase):
         geo_res = InvestigationTools.get_geographic_context(temp_work, self.db)
         self.assertFalse(geo_res["coordinates_available"])
         self.assertIn("unavailable", geo_res["message"].lower())
-        self.assertEqual(geo_res["geographic_score"], 30.0)
+        self.assertIsNone(geo_res["geographic_score"])
 
     # =========================================================================
     # 13. Missing Optional Evidence / Null Fields Handling

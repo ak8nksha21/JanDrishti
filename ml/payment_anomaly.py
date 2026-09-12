@@ -304,7 +304,7 @@ class PaymentAnomalyDetector:
                 discrepancy_signals.append("ELEVATED_DISBURSEMENT_LEAD")
                 gap = utilization - completion_rate
                 observations.append(
-                    f"Expenditure rate ({utilization:.1f}%) significantly leads physical completion ({completion_rate:.1f}%)."
+                    f"Associated parliamentary portfolio shows expenditure utilization of {utilization:.1f}% versus physical completion of {completion_rate:.1f}%."
                 )
                 risk_penalties.append(min(45.0, 20.0 + (gap * 0.5)))
             else:

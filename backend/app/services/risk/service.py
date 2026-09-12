@@ -32,7 +32,13 @@ def get_work_id_str(w: Work) -> str:
 
 def calculate_geographic_scores(works: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
     """Detect extreme geographic clustering and coordinate collisions (<60m)."""
-    geo_scores = {w["work_id"]: {"score": 5.0, "collisions": [], "reason": "No geographic anomaly"} for w in works}
+    geo_scores = {
+        w["work_id"]: {
+            "score": (0.0 if (w.get("latitude") is not None and w.get("longitude") is not None) else None),
+            "collisions": [],
+            "reason": ("No geographic anomaly" if (w.get("latitude") is not None and w.get("longitude") is not None) else "GPS coordinates unavailable")
+        } for w in works
+    }
     n = len(works)
     for i in range(n):
         w1 = works[i]
@@ -193,7 +199,7 @@ def run_full_risk_pipeline(db: Session) -> Dict[str, Any]:
         c_score = cost_results.get(wid, {}).get("score", 0.0)
         m_score = multi_results.get(wid, {}).get("score", 0.0)
         d_score = dup_results.get(wid, {}).get("score", 0.0)
-        g_score = geo_results.get(wid, {}).get("score", 0.0)
+        g_score = geo_results.get(wid, {}).get("score")
         u_score = util_results.get(wid, {}).get("score", 0.0)
         dq_score = dq_results.get(wid, {}).get("score", 0.0)
 

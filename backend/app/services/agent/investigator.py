@@ -100,7 +100,8 @@ class AIAgentInvestigator:
                 "model_version": risk.model_version
             }
         else:
-            signals = {"ml_anomaly_score": 20.0, "cost_score": 20.0, "duplicate_score": 10.0, "utilization_score": 20.0, "geographic_score": 15.0, "data_quality_score": 10.0}
+            geo_score = 0.0 if (work.latitude is not None and work.longitude is not None) else None
+            signals = {"ml_anomaly_score": 20.0, "cost_score": 20.0, "duplicate_score": 10.0, "utilization_score": 20.0, "geographic_score": geo_score, "data_quality_score": 10.0}
             rb = InvestigationTools.get_risk_breakdown(work, self.db, signals)
             risk_breakdown = {
                 "work_id": canonical_id,

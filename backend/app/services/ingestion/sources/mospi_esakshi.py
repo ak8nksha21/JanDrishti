@@ -117,3 +117,30 @@ class MoSPIeSAKSHIAdapter:
         except Exception as e:
             logger.error(f"Failed to fetch MoSPI tenure data: {e}")
             raise
+
+    def fetch_sanctioned_works_report(self, combo: str = "0,0,0,2") -> (Dict[str, Any], str):
+        """
+        Fetch official work-level sanctioned works report data from MoSPI dashboard.
+        Endpoint: /rest/PreLoginDashboardData/getTilesReportData
+        Payload: {"combo": combo, "key": "Works Sanctioned"}
+        Returns: (parsed JSON dict, raw saved file path)
+        """
+        url = f"{self.BASE_URL}/rest/PreLoginDashboardData/getTilesReportData"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+            "Content-Type": "application/json; charset=utf-8",
+            "Accept": "application/json"
+        }
+        payload = {"combo": combo, "key": "Works Sanctioned"}
+        try:
+            with httpx.Client(timeout=self.timeout, verify=False) as client:
+                response = client.post(url, json=payload, headers=headers)
+                response.raise_for_status()
+                data = response.json()
+                clean_combo = combo.replace(",", "_")
+                raw_path = self._save_raw(f"sanctioned_works_{clean_combo}", data)
+                return data, raw_path
+        except Exception as e:
+            logger.error(f"Failed to fetch MoSPI sanctioned works report for combo '{combo}': {e}")
+            raise
+

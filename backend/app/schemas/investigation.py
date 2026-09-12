@@ -5,12 +5,12 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class SignalBreakdown(BaseModel):
     """PRD-aligned risk signal breakdown."""
-    ml_anomaly_score: float = Field(..., ge=0.0, le=100.0, description="ML / statistical anomaly score (25% weight)")
-    cost_score: float = Field(..., ge=0.0, le=100.0, description="Cost deviation anomaly score (25% weight)")
-    duplicate_score: float = Field(..., ge=0.0, le=100.0, description="Duplicate & overlap score (20% weight)")
-    utilization_score: float = Field(..., ge=0.0, le=100.0, description="MP & constituency financial utilization score (15% weight)")
-    geographic_score: float = Field(..., ge=0.0, le=100.0, description="Geographic proximity / location risk score (10% weight)")
-    data_quality_score: float = Field(..., ge=0.0, le=100.0, description="Data completeness and verification risk score (5% weight)")
+    ml_anomaly_score: Optional[float] = Field(default=None, ge=0.0, le=100.0, description="ML / statistical anomaly score (25% weight)")
+    cost_score: Optional[float] = Field(default=None, ge=0.0, le=100.0, description="Cost deviation anomaly score (25% weight)")
+    duplicate_score: Optional[float] = Field(default=None, ge=0.0, le=100.0, description="Duplicate & overlap score (20% weight)")
+    utilization_score: Optional[float] = Field(default=None, ge=0.0, le=100.0, description="MP & constituency financial utilization score (15% weight)")
+    geographic_score: Optional[float] = Field(default=None, ge=0.0, le=100.0, description="Geographic proximity / location risk score (10% weight)")
+    data_quality_score: Optional[float] = Field(default=None, ge=0.0, le=100.0, description="Data completeness and verification risk score (5% weight)")
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -45,8 +45,8 @@ class InvestigationResponse(BaseModel):
     category: Optional[str] = None
     cost: Optional[float] = None
 
-    risk_level: str = Field(..., description="Risk tier: Low (0-30), Medium (31-60), High (61-80), Critical (81-100)")
-    overall_score: float = Field(..., ge=0.0, le=100.0, description="Composite weighted risk score (0-100)")
+    risk_level: str = Field(..., description="Risk tier: Low (0-30), Medium (31-60), High (61-80), Critical (81-100), Insufficient Data")
+    overall_score: Optional[float] = Field(default=None, ge=0.0, le=100.0, description="Composite weighted risk score (0-100) or None if insufficient data")
 
     summary: str = Field(..., description="High-level synthesis summary using safe, objective language")
     primary_reasons: List[str] = Field(default_factory=list, description="Top contributing factors to the risk level")

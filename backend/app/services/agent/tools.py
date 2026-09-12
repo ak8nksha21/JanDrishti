@@ -299,8 +299,33 @@ def _try_cost_overrun_detector(work: Any) -> Optional[Dict[str, Any]]:
     """Safe delegation hook for CostOverrunDetector."""
     try:
         from ml.cost_overrun import CostOverrunDetector
+        from app.services.enrichment.esakshi import official_sanction_service
+        wid = getattr(work, "work_id", None) or getattr(work, "id", None) or (work.get("work_id") if isinstance(work, dict) else None)
+        sanction_info = official_sanction_service.get_sanction_info(wid) if wid else None
+
+        if isinstance(work, dict):
+            work_data = dict(work)
+        else:
+            work_data = {
+                "work_id": wid,
+                "cost": getattr(work, "cost", None),
+                "reported_completed_cost": getattr(work, "cost", None),
+                "completion_date": getattr(work, "completion_date", None),
+                "actual_expenditure": getattr(work, "actual_expenditure", None),
+            }
+
+        if sanction_info:
+            work_data["official_sanction_amount"] = sanction_info.get("official_sanction_amount")
+            work_data["sanctioned_cost"] = sanction_info.get("official_sanction_amount")
+            work_data["official_sanction_date"] = sanction_info.get("official_sanction_date")
+            work_data["sanction_date"] = sanction_info.get("official_sanction_date")
+            work_data["official_sanction_source"] = sanction_info.get("official_sanction_source")
+            work_data["official_sanction_field"] = sanction_info.get("official_sanction_field")
+            work_data["official_sanction_work_number"] = sanction_info.get("official_sanction_work_number")
+            work_data["official_sanction_verified"] = sanction_info.get("official_sanction_verified", True)
+
         detector = CostOverrunDetector()
-        return detector.evaluate_work(work)
+        return detector.evaluate_work(work_data)
     except Exception as e:
         logger.debug(f"CostOverrunDetector adapter error: {e}")
         return None
@@ -310,11 +335,34 @@ def _try_delay_detector(work: Any) -> Optional[Dict[str, Any]]:
     """Safe delegation hook for DelayDetector."""
     try:
         from ml.delay_detection import DelayDetector
+        from app.services.enrichment.esakshi import official_sanction_service
+        wid = getattr(work, "work_id", None) or getattr(work, "id", None) or (work.get("work_id") if isinstance(work, dict) else None)
+        sanction_info = official_sanction_service.get_sanction_info(wid) if wid else None
+
+        if isinstance(work, dict):
+            work_data = dict(work)
+        else:
+            work_data = {
+                "work_id": wid,
+                "cost": getattr(work, "cost", None),
+                "completion_date": getattr(work, "completion_date", None),
+                "category": getattr(work, "category", None),
+                "district": getattr(work, "district", None),
+            }
+
+        if sanction_info:
+            work_data["official_sanction_date"] = sanction_info.get("official_sanction_date")
+            work_data["sanction_date"] = sanction_info.get("official_sanction_date")
+            work_data["official_sanction_source"] = sanction_info.get("official_sanction_source")
+            work_data["official_sanction_field"] = sanction_info.get("official_sanction_field")
+            work_data["official_sanction_verified"] = sanction_info.get("official_sanction_verified", True)
+
         detector = DelayDetector()
-        return detector.evaluate_work(work)
+        return detector.evaluate_work(work_data)
     except Exception as e:
         logger.debug(f"DelayDetector adapter error: {e}")
         return None
+
 
 
 def _try_payment_anomaly_detector(record: Any) -> Optional[Dict[str, Any]]:
@@ -756,7 +804,7 @@ class InvestigationTools:
         if not has_coords:
             return {
                 "coordinates_available": False,
-                "geographic_score": 30.0,  # Unverified location baseline
+                "geographic_score": None,  # Insufficient data to evaluate spatial risk
                 "message": "GPS coordinates unavailable in administrative source records.",
                 "state": work.state,
                 "district": work.district,
@@ -767,7 +815,7 @@ class InvestigationTools:
 
         lat, lon = work.latitude, work.longitude
 
-        # Validate geographic bounding box for India (Lat ~6.0N - 37.5N, Lon ~68.0E - 97.5E)
+        # Validate geographic bounding box for India (Lat ~6.0N - 38.0N, Lon ~68.0E - 98.0E)
         is_valid_india_bound = (6.0 <= lat <= 38.0 and 68.0 <= lon <= 98.0)
 
         # Count nearby works with coordinates in the same constituency
@@ -780,7 +828,7 @@ class InvestigationTools:
                 Work.longitude.isnot(None)
             ).count()
 
-        geo_score = 15.0 if is_valid_india_bound else 70.0
+        geo_score = 0.0 if is_valid_india_bound else 70.0
 
         return {
             "coordinates_available": True,
@@ -833,28 +881,42 @@ class InvestigationTools:
             "data_quality_score": 0.05
         }
 
-        # Calculate weighted composite score
-        overall_score = sum(signals.get(k, 20.0) * w for k, w in weights.items())
-        overall_score = round(max(0.0, min(100.0, overall_score)), 1)
+        # Calculate available weights and renormalize
+        available_signals = {k: float(signals[k]) for k in weights if signals.get(k) is not None}
+        total_available_weight = sum(weights[k] for k in available_signals)
 
-        # Map to PRD Risk Bands
-        if overall_score <= 30.0:
-            risk_level = "Low"
-        elif overall_score <= 60.0:
-            risk_level = "Medium"
-        elif overall_score <= 80.0:
-            risk_level = "High"
+        if total_available_weight > 0:
+            overall_score = sum(
+                available_signals[k] * (weights[k] / total_available_weight)
+                for k in available_signals
+            )
+            overall_score = round(max(0.0, min(100.0, overall_score)), 1)
+            if overall_score <= 30.0:
+                risk_level = "Low"
+            elif overall_score <= 60.0:
+                risk_level = "Medium"
+            elif overall_score <= 80.0:
+                risk_level = "High"
+            else:
+                risk_level = "Critical"
         else:
-            risk_level = "Critical"
+            overall_score = None
+            risk_level = "Insufficient Data"
 
         # Identify contributing signals
         contributing_signals = {}
         for signal_name, weight in weights.items():
-            score = signals.get(signal_name, 0.0)
+            score = signals.get(signal_name)
+            effective_weight = (
+                round(weight / total_available_weight, 4)
+                if total_available_weight > 0 and score is not None
+                else 0.0
+            )
             contributing_signals[signal_name] = {
                 "score": score,
-                "weight": weight,
-                "weighted_points": round(score * weight, 2)
+                "configured_weight": weight,
+                "effective_weight": effective_weight,
+                "weighted_points": round(float(score) * effective_weight, 2) if score is not None else None
             }
 
         return {

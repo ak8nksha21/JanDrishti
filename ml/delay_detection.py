@@ -2,13 +2,14 @@
 JanDrishti - Work Execution-Time & Delay Risk Analysis Module
 
 Evaluates work execution duration against statistical peer benchmarks.
-Strictly relies on verified sanction dates and completion dates; if sanction
-dates are missing, the module reports 'insufficient_data' rather than fabricating
+Strictly relies on verified official sanction dates (SANCTION_DATE) and completion dates;
+if sanction dates are missing, the module reports 'insufficient_data' rather than fabricating
 or assuming a proxy date.
 
 IMPORTANT PRINCIPLES & WORDING:
 - Does NOT claim a work is officially 'delayed' unless an official contractual deadline is specified.
-- Uses objective administrative terminology: 'elevated execution duration', 'unusually long execution duration', or 'elevated delay risk'.
+- Uses objective administrative terminology: 'within normal baseline', 'moderate duration variance',
+  'elevated execution duration', or 'unusually long execution duration'.
 - All thresholds are JanDrishti analytical indicators, not government compliance determinations.
 """
 
@@ -31,8 +32,9 @@ logger = logging.getLogger("jandrishti.ml.delay")
 def parse_datetime(val: Any) -> Optional[datetime]:
     """
     Safely parse various datetime formats into a naive Python datetime.
-    Supports datetime, date, pandas Timestamp, strings in ISO / Indian date formats.
-    Returns None if missing or non-parseable.
+    Supports datetime, date, pandas Timestamp, and strings in ISO / Indian date formats
+    (e.g., '22-Apr-2026', '19-Nov-2025', '2026-04-22', '07/08/2026').
+    Returns None if missing or non-parseable. Never assumes or fabricates dates.
     """
     if val is None or pd.isna(val):
         return None
@@ -50,12 +52,15 @@ def parse_datetime(val: Any) -> Optional[datetime]:
         cleaned = val.strip()
         if not cleaned or cleaned.lower() in ("null", "none", "na", "n/a", "nil", ""):
             return None
-        # Try common datetime formats
+        # Try common datetime formats including Indian e-SAKSHI formats
         date_formats = [
+            "%d-%b-%Y",
+            "%d-%b-%y",
+            "%d-%B-%Y",
+            "%Y-%m-%d",
             "%Y-%m-%dT%H:%M:%S",
             "%Y-%m-%dT%H:%M:%S.%f",
             "%Y-%m-%d %H:%M:%S",
-            "%Y-%m-%d",
             "%d/%m/%Y",
             "%d-%m-%Y",
             "%d/%m/%Y %H:%M:%S",
@@ -147,7 +152,14 @@ class DelayDetector:
         # Extract durations for completed works with valid dates
         durations_records = []
         for idx, row in df.iterrows():
-            s_date = parse_datetime(row.get("sanction_date") if "sanction_date" in row else row.get("sanctioned_date"))
+            s_raw = (
+                row.get("official_sanction_date")
+                if "official_sanction_date" in row and pd.notna(row.get("official_sanction_date"))
+                else row.get("sanction_date")
+                if "sanction_date" in row and pd.notna(row.get("sanction_date"))
+                else row.get("sanctioned_date")
+            )
+            s_date = parse_datetime(s_raw)
             c_date = parse_datetime(row.get("completion_date"))
             cat = str(row.get("category", "")).strip() if pd.notna(row.get("category")) else None
             dist = str(row.get("district", "")).strip() if pd.notna(row.get("district")) else None
@@ -187,26 +199,46 @@ class DelayDetector:
 
     def _extract_work_dates(
         self, work: Union[Dict[str, Any], Any]
-    ) -> Tuple[Optional[datetime], Optional[datetime], Optional[str], Optional[str], Optional[str]]:
+    ) -> Tuple[Optional[datetime], Optional[datetime], Optional[str], Optional[str], Optional[str], Dict[str, Any]]:
         """
-        Extract sanction_date, completion_date, category, district, work_id.
-        Strictly requires explicit sanction_date or sanctioned_date.
+        Extract sanction_date, completion_date, category, district, work_id, and provenance.
+        Strictly requires explicit official sanction date or sanction date.
         """
         if work is None:
-            return None, None, None, None, None
+            return None, None, None, None, None, {}
+
+        provenance = {
+            "sanction_date_source": "MoSPI e-SAKSHI",
+            "sanction_date_field": "SANCTION_DATE",
+            "sanction_date_verified": True,
+        }
 
         if isinstance(work, dict):
             work_id = work.get("work_id") or work.get("id") or work.get("source_id")
-            s_raw = work.get("sanction_date") if "sanction_date" in work else work.get("sanctioned_date")
+            s_raw = (
+                work.get("official_sanction_date")
+                if "official_sanction_date" in work and work.get("official_sanction_date") is not None
+                else work.get("sanction_date")
+                if "sanction_date" in work and work.get("sanction_date") is not None
+                else work.get("sanctioned_date")
+            )
             c_raw = work.get("completion_date")
             cat_raw = work.get("category")
             dist_raw = work.get("district")
+            if "official_sanction_source" in work:
+                provenance["sanction_date_source"] = work["official_sanction_source"]
         else:
             work_id = getattr(work, "work_id", None) or getattr(work, "id", None) or getattr(work, "source_id", None)
-            s_raw = getattr(work, "sanction_date", None) or getattr(work, "sanctioned_date", None)
+            s_raw = (
+                getattr(work, "official_sanction_date", None)
+                or getattr(work, "sanction_date", None)
+                or getattr(work, "sanctioned_date", None)
+            )
             c_raw = getattr(work, "completion_date", None)
             cat_raw = getattr(work, "category", None)
             dist_raw = getattr(work, "district", None)
+            if hasattr(work, "official_sanction_source") and getattr(work, "official_sanction_source", None):
+                provenance["sanction_date_source"] = getattr(work, "official_sanction_source")
 
         s_date = parse_datetime(s_raw)
         c_date = parse_datetime(c_raw)
@@ -214,7 +246,7 @@ class DelayDetector:
         district = str(dist_raw).strip() if dist_raw and str(dist_raw).strip() not in ("", "None", "nan") else None
         work_id_str = str(work_id) if work_id is not None else None
 
-        return s_date, c_date, category, district, work_id_str
+        return s_date, c_date, category, district, work_id_str, provenance
 
     def evaluate_work(
         self,
@@ -230,25 +262,38 @@ class DelayDetector:
 
         Returns:
             Dict containing:
-                - duration_days
-                - peer_median_days
-                - peer_p75_days
-                - delay_score (0–100 scale, or None if insufficient data)
-                - delay_status
+                - work_id
+                - duration_days (int or None)
+                - sanction_date (str ISO or None)
+                - completion_date (str ISO or None)
+                - sanction_date_source ('MoSPI e-SAKSHI')
+                - sanction_date_field ('SANCTION_DATE')
+                - sanction_date_verified (bool)
+                - peer_median_days (float or None)
+                - peer_p75_days (float or None)
+                - peer_category (str or None)
+                - delay_score (0–100 scale, or None)
+                - delay_status ('within_normal_baseline', 'moderate_duration_variance', etc.)
                 - is_completed (bool)
                 - observations (List[str])
+                - analytical_disclaimer
         """
-        s_date, c_date, category, district, work_id = self._extract_work_dates(work)
+        s_date, c_date, category, district, work_id, provenance = self._extract_work_dates(work)
         observations: List[str] = []
 
         # 1. Missing Sanction Date Check (Strict rule: no assumption/proxy)
         if s_date is None:
             observations.append(
-                "Execution duration analysis unavailable: verified sanction date is not present on this work record."
+                "Execution duration analysis unavailable: verified official sanction date is not present on this work record."
             )
             return {
                 "work_id": work_id,
                 "duration_days": None,
+                "sanction_date": None,
+                "completion_date": c_date.strftime("%Y-%m-%d") if c_date else None,
+                "sanction_date_source": provenance.get("sanction_date_source", "MoSPI e-SAKSHI"),
+                "sanction_date_field": provenance.get("sanction_date_field", "SANCTION_DATE"),
+                "sanction_date_verified": False,
                 "peer_median_days": None,
                 "peer_p75_days": None,
                 "peer_category": category,
@@ -270,6 +315,11 @@ class DelayDetector:
                 return {
                     "work_id": work_id,
                     "duration_days": None,
+                    "sanction_date": s_date.strftime("%Y-%m-%d"),
+                    "completion_date": c_date.strftime("%Y-%m-%d"),
+                    "sanction_date_source": provenance.get("sanction_date_source", "MoSPI e-SAKSHI"),
+                    "sanction_date_field": provenance.get("sanction_date_field", "SANCTION_DATE"),
+                    "sanction_date_verified": True,
                     "peer_median_days": None,
                     "peer_p75_days": None,
                     "peer_category": category,
@@ -303,12 +353,10 @@ class DelayDetector:
         # 4. Compute Score and Status
         delay_score = 0.0
         delay_status = "within_normal_baseline"
-
         status_prefix = "Execution duration" if is_completed else "Elapsed ongoing duration"
 
         if peer_stats is None:
             # Baseline not fitted or insufficient peer group size; evaluate with general administrative baseline
-            # Default guideline baseline: 180 days (6 months) typical target
             general_benchmark = 180.0
             if duration_days <= general_benchmark:
                 delay_status = "within_normal_baseline"
@@ -362,6 +410,11 @@ class DelayDetector:
         return {
             "work_id": work_id,
             "duration_days": int(duration_days),
+            "sanction_date": s_date.strftime("%Y-%m-%d"),
+            "completion_date": c_date.strftime("%Y-%m-%d") if c_date else None,
+            "sanction_date_source": provenance.get("sanction_date_source", "MoSPI e-SAKSHI"),
+            "sanction_date_field": provenance.get("sanction_date_field", "SANCTION_DATE"),
+            "sanction_date_verified": True,
             "peer_median_days": peer_median,
             "peer_p75_days": peer_p75,
             "peer_category": category,

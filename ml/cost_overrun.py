@@ -2,12 +2,18 @@
 JanDrishti - Work-Level Cost Overrun Detection Module
 
 Calculates exact budgetary deviation and cost overruns on a work-by-work level
-where sanctioned cost and actual expenditure/disbursed amount are available.
+where sanctioned cost baseline and independent actual expenditure/disbursed amount are available.
 
-IMPORTANT CONCEPTUAL DISTINCTION:
-- Cost Overrun = Actual expenditure exceeds sanctioned cost for an individual work.
+IMPORTANT CONCEPTUAL DISTINCTIONS:
+- Cost Overrun = Actual expenditure exceeds officially sanctioned cost baseline for an individual work.
 - Cost Anomaly = Statistical cost deviation relative to peer works in the same category or region.
-Never confuse or conflate peer-based cost anomaly with work-level cost overrun.
+- Reported Completed Cost = The overall project value reported in completed works registries.
+  It is NOT an independent contractor voucher ledger.
+
+FINANCIAL INTEGRITY RULE:
+When only the verified sanctioned baseline is present but independent work-level actual expenditure
+is unavailable, the detector returns 'insufficient_data'. It does NOT calculate
+(reported_completed_cost - sanctioned_amount) as a false '0% overrun'.
 
 DISCLAIMER:
 All overrun severity thresholds and status classifications are JanDrishti analytical
@@ -60,8 +66,8 @@ def safe_float(val: Any) -> Optional[float]:
 
 class CostOverrunDetector:
     """
-    Evaluates work-level budget execution by comparing sanctioned cost
-    with actual expenditure/disbursement.
+    Evaluates work-level budget execution by comparing verified sanctioned baseline
+    with independent actual expenditure/disbursement.
     """
 
     def __init__(
@@ -75,57 +81,95 @@ class CostOverrunDetector:
         self.critical_pct = float(critical_pct)
         self.disclaimer = JANDRISHTI_ANALYTICAL_DISCLAIMER
 
-    def _extract_costs(self, work: Union[Dict[str, Any], Any]) -> Tuple[Optional[float], Optional[float], Optional[str]]:
+    def _extract_costs(
+        self, work: Union[Dict[str, Any], Any]
+    ) -> Tuple[Optional[float], Optional[float], Optional[float], Optional[str], Dict[str, Any]]:
         """
-        Extract sanctioned cost and actual expenditure from a work dict or ORM object.
-        Supports standard canonical fields and common source aliases.
+        Extract sanctioned cost baseline, reported completed cost, independent actual expenditure,
+        work identifier, and provenance metadata from a work dict or ORM object.
         """
         if work is None:
-            return None, None, None
+            return None, None, None, None, {}
 
-        # Extract work identifier
         work_id = None
+        provenance = {}
+
         if isinstance(work, dict):
             work_id = work.get("work_id") or work.get("id") or work.get("source_id")
-            # Sanctioned cost candidates
+
+            # 1. Sanctioned baseline candidates
             s_val = (
-                work.get("sanctioned_cost")
-                if "sanctioned_cost" in work
+                work.get("official_sanction_amount")
+                if "official_sanction_amount" in work and work.get("official_sanction_amount") is not None
+                else work.get("sanctioned_cost")
+                if "sanctioned_cost" in work and work.get("sanctioned_cost") is not None
                 else work.get("sanctioned_amount")
-                if "sanctioned_amount" in work
-                else work.get("estimated_cost")
-                if "estimated_cost" in work
+                if "sanctioned_amount" in work and work.get("sanctioned_amount") is not None
                 else work.get("sanction_amount")
+                if "sanction_amount" in work and work.get("sanction_amount") is not None
+                else work.get("estimated_cost")
             )
-            # Actual expenditure candidates
+
+            # 2. Reported completed cost (from registry feed)
+            r_val = (
+                work.get("reported_completed_cost")
+                if "reported_completed_cost" in work and work.get("reported_completed_cost") is not None
+                else work.get("completed_cost")
+                if "completed_cost" in work and work.get("completed_cost") is not None
+                else work.get("cost")
+            )
+
+            # 3. Independent actual expenditure (only genuine expenditure / voucher records)
             e_val = (
                 work.get("actual_expenditure")
-                if "actual_expenditure" in work
-                else work.get("expenditure")
-                if "expenditure" in work
-                else work.get("disbursed_amount")
-                if "disbursed_amount" in work
-                else work.get("actual_cost")
-                if "actual_cost" in work
-                else work.get("completed_cost")
+                if "actual_expenditure" in work and work.get("actual_expenditure") is not None
+                else work.get("independent_actual_expenditure")
+                if "independent_actual_expenditure" in work and work.get("independent_actual_expenditure") is not None
+                else work.get("expenditure_voucher_amount")
+                if "expenditure_voucher_amount" in work and work.get("expenditure_voucher_amount") is not None
+                else None
             )
 
-            # If only 'cost' is provided without explicit separate expenditure,
-            # we check if expenditure is explicitly provided under another key.
-            if s_val is None and "cost" in work and e_val is not None:
-                s_val = work.get("cost")
-            elif e_val is None and "cost" in work and s_val is not None:
-                e_val = work.get("cost")
+            provenance = {
+                "sanctioned_cost_source": work.get("official_sanction_source") or "MoSPI e-SAKSHI",
+                "sanctioned_cost_field": work.get("official_sanction_field") or "SANCTION_AMOUNT",
+                "sanctioned_cost_match_key": work.get("official_sanction_match_key") or "WORK_RECOMMENDATION_DTL_ID == work_id",
+                "sanctioned_cost_verified": bool(work.get("official_sanction_verified", True)),
+            }
         else:
             work_id = getattr(work, "work_id", None) or getattr(work, "id", None) or getattr(work, "source_id", None)
-            s_val = getattr(work, "sanctioned_cost", None) or getattr(work, "sanctioned_amount", None) or getattr(work, "cost", None)
-            e_val = getattr(work, "actual_expenditure", None) or getattr(work, "expenditure", None) or getattr(work, "disbursed_amount", None)
+
+            s_val = (
+                getattr(work, "official_sanction_amount", None)
+                or getattr(work, "sanctioned_cost", None)
+                or getattr(work, "sanctioned_amount", None)
+                or getattr(work, "sanction_amount", None)
+                or getattr(work, "estimated_cost", None)
+            )
+            r_val = (
+                getattr(work, "reported_completed_cost", None)
+                or getattr(work, "completed_cost", None)
+                or getattr(work, "cost", None)
+            )
+            e_val = (
+                getattr(work, "actual_expenditure", None)
+                or getattr(work, "independent_actual_expenditure", None)
+                or getattr(work, "expenditure_voucher_amount", None)
+            )
+
+            provenance = {
+                "sanctioned_cost_source": getattr(work, "official_sanction_source", None) or "MoSPI e-SAKSHI",
+                "sanctioned_cost_field": getattr(work, "official_sanction_field", None) or "SANCTION_AMOUNT",
+                "sanctioned_cost_match_key": getattr(work, "official_sanction_match_key", None) or "WORK_RECOMMENDATION_DTL_ID == work_id",
+                "sanctioned_cost_verified": bool(getattr(work, "official_sanction_verified", True)),
+            }
 
         sanctioned_cost = safe_float(s_val)
+        reported_completed_cost = safe_float(r_val)
         actual_expenditure = safe_float(e_val)
         work_id_str = str(work_id) if work_id is not None else None
 
-        return sanctioned_cost, actual_expenditure, work_id_str
+        return sanctioned_cost, reported_completed_cost, actual_expenditure, work_id_str, provenance
 
     def evaluate_work(self, work: Union[Dict[str, Any], Any]) -> Dict[str, Any]:
         """
@@ -133,47 +177,89 @@ class CostOverrunDetector:
 
         Returns:
             Dict containing:
-                - sanctioned_cost
-                - actual_expenditure
-                - overrun_amount (actual_expenditure - sanctioned_cost)
-                - overrun_percentage (((actual_expenditure - sanctioned_cost) / sanctioned_cost) * 100)
-                - overrun_score (0–100 scale, or None if insufficient data)
-                - overrun_status
+                - work_id
+                - overrun_status ('insufficient_data', 'no_overrun', 'moderate_overrun', etc.)
+                - sanctioned_cost (float or None)
+                - actual_expenditure (float or None)
+                - reported_completed_cost (float or None)
+                - overrun_amount (float or None)
+                - overrun_percentage (float or None)
+                - overrun_score (0–100 scale, or None)
                 - is_overrun (bool)
-                - evidence (list of explanatory text strings)
+                - baseline_available (bool)
+                - independent_actual_expenditure_available (bool)
+                - sanctioned_cost_source
+                - sanctioned_cost_field
+                - sanctioned_cost_match_key
+                - sanctioned_cost_verified
+                - evidence (List[str])
                 - analytical_disclaimer
         """
-        sanctioned_cost, actual_expenditure, work_id = self._extract_costs(work)
-        evidence: List[str] = []
+        (
+            sanctioned_cost,
+            reported_completed_cost,
+            actual_expenditure,
+            work_id,
+            provenance,
+        ) = self._extract_costs(work)
 
-        # 1. Check for missing data
-        if sanctioned_cost is None or actual_expenditure is None:
-            missing_parts = []
-            if sanctioned_cost is None:
-                missing_parts.append("sanctioned cost")
-            if actual_expenditure is None:
-                missing_parts.append("actual expenditure")
-            
+        evidence: List[str] = []
+        baseline_available = sanctioned_cost is not None
+        independent_actual_expenditure_available = actual_expenditure is not None
+
+        # 1. Missing Sanctioned Baseline
+        if sanctioned_cost is None:
             evidence.append(
-                f"Work-level cost overrun evaluation is unavailable due to missing {' and '.join(missing_parts)}."
+                "Work-level cost overrun evaluation is unavailable: verified sanctioned-cost baseline is missing."
             )
-            evidence.append(
-                f"Note: {self.disclaimer}"
-            )
+            evidence.append(f"Note: {self.disclaimer}")
             return {
                 "work_id": work_id,
-                "sanctioned_cost": sanctioned_cost,
+                "overrun_status": "insufficient_data",
+                "sanctioned_cost": None,
                 "actual_expenditure": actual_expenditure,
+                "reported_completed_cost": reported_completed_cost,
                 "overrun_amount": None,
                 "overrun_percentage": None,
                 "overrun_score": None,
-                "overrun_status": "insufficient_data",
                 "is_overrun": False,
+                "baseline_available": False,
+                "independent_actual_expenditure_available": independent_actual_expenditure_available,
+                "sanctioned_cost_source": provenance.get("sanctioned_cost_source", "MoSPI e-SAKSHI"),
+                "sanctioned_cost_field": provenance.get("sanctioned_cost_field", "SANCTION_AMOUNT"),
+                "sanctioned_cost_match_key": provenance.get("sanctioned_cost_match_key", "WORK_RECOMMENDATION_DTL_ID == work_id"),
+                "sanctioned_cost_verified": False,
                 "evidence": evidence,
                 "analytical_disclaimer": self.disclaimer,
             }
 
-        # 2. Check for negative financial data anomalies
+        # 2. Baseline available, but independent actual expenditure is missing
+        if actual_expenditure is None:
+            evidence.append(
+                "Verified sanctioned baseline is available, but independent work-level actual expenditure is unavailable for a verified budget-overrun calculation."
+            )
+            evidence.append(f"Note: {self.disclaimer}")
+            return {
+                "work_id": work_id,
+                "overrun_status": "insufficient_data",
+                "sanctioned_cost": sanctioned_cost,
+                "actual_expenditure": None,
+                "reported_completed_cost": reported_completed_cost,
+                "overrun_amount": None,
+                "overrun_percentage": None,
+                "overrun_score": None,
+                "is_overrun": False,
+                "baseline_available": True,
+                "independent_actual_expenditure_available": False,
+                "sanctioned_cost_source": provenance.get("sanctioned_cost_source", "MoSPI e-SAKSHI"),
+                "sanctioned_cost_field": provenance.get("sanctioned_cost_field", "SANCTION_AMOUNT"),
+                "sanctioned_cost_match_key": provenance.get("sanctioned_cost_match_key", "WORK_RECOMMENDATION_DTL_ID == work_id"),
+                "sanctioned_cost_verified": True,
+                "evidence": evidence,
+                "analytical_disclaimer": self.disclaimer,
+            }
+
+        # 3. Check for negative financial data anomalies
         if sanctioned_cost < 0 or actual_expenditure < 0:
             evidence.append(
                 f"Invalid financial values detected: sanctioned cost ₹{sanctioned_cost:,.2f}, "
@@ -181,56 +267,74 @@ class CostOverrunDetector:
             )
             return {
                 "work_id": work_id,
+                "overrun_status": "invalid_negative_values",
                 "sanctioned_cost": sanctioned_cost,
                 "actual_expenditure": actual_expenditure,
+                "reported_completed_cost": reported_completed_cost,
                 "overrun_amount": None,
                 "overrun_percentage": None,
                 "overrun_score": None,
-                "overrun_status": "invalid_negative_values",
                 "is_overrun": False,
+                "baseline_available": True,
+                "independent_actual_expenditure_available": True,
+                "sanctioned_cost_source": provenance.get("sanctioned_cost_source", "MoSPI e-SAKSHI"),
+                "sanctioned_cost_field": provenance.get("sanctioned_cost_field", "SANCTION_AMOUNT"),
+                "sanctioned_cost_match_key": provenance.get("sanctioned_cost_match_key", "WORK_RECOMMENDATION_DTL_ID == work_id"),
+                "sanctioned_cost_verified": True,
                 "evidence": evidence,
                 "analytical_disclaimer": self.disclaimer,
             }
 
-        # 3. Check for zero sanctioned cost with positive expenditure
+        # 4. Check for zero sanctioned cost with positive expenditure
         if sanctioned_cost == 0.0:
             overrun_amount = round(actual_expenditure, 2)
             if actual_expenditure > 0.0:
                 evidence.append(
                     f"Expenditure of ₹{actual_expenditure:,.2f} recorded against zero sanctioned cost baseline."
                 )
-                evidence.append(
-                    f"Threshold indicator: [{self.disclaimer}]"
-                )
+                evidence.append(f"Threshold indicator: [{self.disclaimer}]")
                 return {
                     "work_id": work_id,
+                    "overrun_status": "zero_cost_baseline_overrun",
                     "sanctioned_cost": 0.0,
                     "actual_expenditure": actual_expenditure,
+                    "reported_completed_cost": reported_completed_cost,
                     "overrun_amount": overrun_amount,
                     "overrun_percentage": None,
                     "overrun_score": 85.0,
-                    "overrun_status": "zero_cost_baseline_overrun",
                     "is_overrun": True,
+                    "baseline_available": True,
+                    "independent_actual_expenditure_available": True,
+                    "sanctioned_cost_source": provenance.get("sanctioned_cost_source", "MoSPI e-SAKSHI"),
+                    "sanctioned_cost_field": provenance.get("sanctioned_cost_field", "SANCTION_AMOUNT"),
+                    "sanctioned_cost_match_key": provenance.get("sanctioned_cost_match_key", "WORK_RECOMMENDATION_DTL_ID == work_id"),
+                    "sanctioned_cost_verified": True,
                     "evidence": evidence,
                     "analytical_disclaimer": self.disclaimer,
                 }
             else:
-                # 0 sanctioned, 0 expenditure
                 evidence.append("Both sanctioned cost and expenditure are zero.")
                 return {
                     "work_id": work_id,
+                    "overrun_status": "no_overrun",
                     "sanctioned_cost": 0.0,
                     "actual_expenditure": 0.0,
+                    "reported_completed_cost": reported_completed_cost,
                     "overrun_amount": 0.0,
                     "overrun_percentage": 0.0,
                     "overrun_score": 0.0,
-                    "overrun_status": "no_overrun",
                     "is_overrun": False,
+                    "baseline_available": True,
+                    "independent_actual_expenditure_available": True,
+                    "sanctioned_cost_source": provenance.get("sanctioned_cost_source", "MoSPI e-SAKSHI"),
+                    "sanctioned_cost_field": provenance.get("sanctioned_cost_field", "SANCTION_AMOUNT"),
+                    "sanctioned_cost_match_key": provenance.get("sanctioned_cost_match_key", "WORK_RECOMMENDATION_DTL_ID == work_id"),
+                    "sanctioned_cost_verified": True,
                     "evidence": evidence,
                     "analytical_disclaimer": self.disclaimer,
                 }
 
-        # 4. Standard Calculation
+        # 5. True Overrun Calculation (When independent actual expenditure is present)
         overrun_amount = round(actual_expenditure - sanctioned_cost, 2)
         overrun_percentage = round(((actual_expenditure - sanctioned_cost) / sanctioned_cost) * 100.0, 2)
 
@@ -249,7 +353,6 @@ class CostOverrunDetector:
                 evidence.append("Expenditure exactly matches sanctioned cost.")
         elif overrun_percentage <= self.moderate_pct:
             overrun_status = "moderate_overrun"
-            # Scale score proportionally between 35 and 60
             progress = (overrun_percentage - self.tolerance_pct) / max(1.0, (self.moderate_pct - self.tolerance_pct))
             overrun_score = round(35.0 + (progress * 25.0), 1)
             evidence.append(
@@ -258,7 +361,6 @@ class CostOverrunDetector:
             )
         elif overrun_percentage <= self.critical_pct:
             overrun_status = "high_overrun"
-            # Scale score proportionally between 61 and 80
             progress = (overrun_percentage - self.moderate_pct) / max(1.0, (self.critical_pct - self.moderate_pct))
             overrun_score = round(61.0 + (progress * 19.0), 1)
             evidence.append(
@@ -267,7 +369,6 @@ class CostOverrunDetector:
             )
         else:
             overrun_status = "critical_overrun"
-            # Scale score proportionally between 81 and 100
             excess_factor = min(1.0, (overrun_percentage - self.critical_pct) / 50.0)
             overrun_score = round(81.0 + (excess_factor * 19.0), 1)
             evidence.append(
@@ -278,13 +379,20 @@ class CostOverrunDetector:
 
         return {
             "work_id": work_id,
+            "overrun_status": overrun_status,
             "sanctioned_cost": sanctioned_cost,
             "actual_expenditure": actual_expenditure,
+            "reported_completed_cost": reported_completed_cost,
             "overrun_amount": overrun_amount,
             "overrun_percentage": overrun_percentage,
             "overrun_score": float(np.clip(overrun_score, 0.0, 100.0)),
-            "overrun_status": overrun_status,
             "is_overrun": is_overrun,
+            "baseline_available": True,
+            "independent_actual_expenditure_available": True,
+            "sanctioned_cost_source": provenance.get("sanctioned_cost_source", "MoSPI e-SAKSHI"),
+            "sanctioned_cost_field": provenance.get("sanctioned_cost_field", "SANCTION_AMOUNT"),
+            "sanctioned_cost_match_key": provenance.get("sanctioned_cost_match_key", "WORK_RECOMMENDATION_DTL_ID == work_id"),
+            "sanctioned_cost_verified": True,
             "evidence": evidence,
             "analytical_disclaimer": self.disclaimer,
         }

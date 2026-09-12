@@ -53,6 +53,7 @@ data/raw/*
 !data/raw/.gitkeep
 data/processed/*
 !data/processed/.gitkeep
+!data/processed/mospi_esakshi_sanctions_cache.json
 
 # Databases
 *.db
