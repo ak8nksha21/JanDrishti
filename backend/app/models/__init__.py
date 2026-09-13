@@ -3,6 +3,7 @@ from app.models.work import Work
 from app.models.mp_summary import MPFinancialSummary
 from app.models.macro_summary import MacroMetric
 from app.models.risk import RiskScore, Alert, SimilarWork, AuditLog
+from app.models.user import User, UserActivity
 
 __all__ = [
     "Work",
@@ -11,6 +12,8 @@ __all__ = [
     "RiskScore",
     "Alert",
     "SimilarWork",
-    "AuditLog"
+    "AuditLog",
+    "User",
+    "UserActivity"
 ]
 

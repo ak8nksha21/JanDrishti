@@ -8,8 +8,13 @@ import {
   RefreshCw,
   Menu,
   X,
+  User,
+  LogIn,
+  LogOut,
+  ChevronDown,
 } from 'lucide-react';
 import { Link, useRouter } from '../../router/Router';
+import { useAuth } from '../../context/AuthContext';
 
 /**
  * Bespoke JanDrishti Logo Emblem
@@ -64,12 +69,15 @@ function JanDrishtiLogo({ className = "h-9 w-9 sm:h-10 sm:w-10" }) {
 export default function TopNavbar({
   onOpenSearch = () => {},
   onOpenSync = () => {},
+  onOpenAuth = () => {},
   isSyncing = false,
   apiStatus = { isOnline: true, latencyMs: 18 },
   lastSyncTime = null,
 }) {
   const { path } = useRouter();
+  const { user, logout, isAuthenticated } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   // Core Product Navigation Areas
   const navItems = [
@@ -185,6 +193,58 @@ export default function TopNavbar({
               <span>{apiStatus.isOnline ? `${apiStatus.latencyMs || 18}ms` : 'Offline'}</span>
             </div>
 
+            {/* Optional Authentication & User Identity Indicator */}
+            {isAuthenticated ? (
+              <div className="relative">
+                <button
+                  onClick={() => setUserMenuOpen((prev) => !prev)}
+                  className="flex items-center gap-2 pl-2 pr-2.5 py-1.5 rounded-xl bg-[#FAF7F2] hover:bg-[#E7DDCA] border border-[#D8CBB6] text-xs font-semibold text-[#44312A] transition active:scale-95 cursor-pointer shadow-2xs"
+                  title="User Identity Profile"
+                >
+                  <div className="h-6 w-6 rounded-lg bg-[#44312A] text-[#FAF7F2] flex items-center justify-center font-bold text-[11px] shadow-2xs">
+                    {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                  </div>
+                  <span className="hidden xl:inline text-[#44312A] max-w-[110px] truncate">
+                    {user?.name?.split(' ')[0] || 'User'}
+                  </span>
+                  <ChevronDown className="h-3.5 w-3.5 text-[#8C7769]" />
+                </button>
+
+                {userMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-60 bg-white rounded-2xl border border-[#D8CBB6] shadow-xl p-3 z-50 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="px-2 py-2 border-b border-[#D8CBB6]/50 mb-2">
+                      <p className="text-xs font-bold text-[#44312A] truncate">{user?.name}</p>
+                      <p className="text-[11px] text-[#8C7769] truncate font-mono">{user?.email}</p>
+                      <div className="mt-1.5 flex items-center gap-1.5">
+                        <span className="inline-block text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#FAF7F2] text-[#44312A] border border-[#D8CBB6]">
+                          Citizen Investigator
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setUserMenuOpen(false);
+                        logout();
+                      }}
+                      className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-semibold text-red-600 hover:bg-red-50 transition cursor-pointer"
+                    >
+                      <LogOut className="h-3.5 w-3.5" />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <button
+                onClick={() => onOpenAuth('login')}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#44312A] hover:bg-[#34241E] text-white text-xs font-bold transition active:scale-95 shadow-2xs cursor-pointer"
+                title="Sign In (Optional user identity)"
+              >
+                <LogIn className="h-3.5 w-3.5 text-[#E7DDCA]" />
+                <span className="hidden sm:inline">Sign In</span>
+              </button>
+            )}
+
             {/* Mobile Hamburger Toggle */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -226,6 +286,44 @@ export default function TopNavbar({
               </Link>
             );
           })}
+
+          {/* Mobile Authentication Area */}
+          <div className="pt-2 border-t border-[#D8CBB6]/60">
+            {isAuthenticated ? (
+              <div className="p-3 bg-[#FAF7F2] rounded-xl border border-[#D8CBB6] space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="truncate">
+                    <p className="text-xs font-bold text-[#44312A] truncate">{user?.name}</p>
+                    <p className="text-[10px] text-[#8C7769] font-mono truncate">{user?.email}</p>
+                  </div>
+                  <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-white text-[#44312A] border border-[#D8CBB6]">
+                    Citizen
+                  </span>
+                </div>
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    logout();
+                  }}
+                  className="w-full flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold text-red-600 bg-white hover:bg-red-50 rounded-lg border border-red-200 transition"
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                  <span>Sign Out</span>
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onOpenAuth('login');
+                }}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#44312A] text-white text-xs font-bold shadow-sm"
+              >
+                <LogIn className="h-4 w-4 text-[#E7DDCA]" />
+                <span>Sign In / Register</span>
+              </button>
+            )}
+          </div>
         </div>
       )}
     </header>

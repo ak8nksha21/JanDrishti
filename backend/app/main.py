@@ -19,6 +19,8 @@ from app.routes.duplicates import router as duplicates_router
 from app.routes.geo import router as geo_router
 from app.routes.data_quality import router as data_quality_router
 from app.routes.trends import router as trends_router
+from app.routes.auth import router as auth_router
+from app.middleware.auth_context import OptionalAuthMiddleware
 
 # Configure logging
 logging.basicConfig(
@@ -58,6 +60,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Register Optional Authentication Middleware (extracts user if present; never blocks guests)
+app.add_middleware(OptionalAuthMiddleware)
+
 # Register API Routers under /api
 app.include_router(works_router, prefix="/api")
 app.include_router(mps_router, prefix="/api")
@@ -73,6 +78,8 @@ app.include_router(duplicates_router, prefix="/api")
 app.include_router(geo_router, prefix="/api")
 app.include_router(data_quality_router, prefix="/api")
 app.include_router(trends_router, prefix="/api")
+app.include_router(auth_router, prefix="/api/auth")
+app.include_router(auth_router, prefix="/auth")
 
 
 @app.get("/")

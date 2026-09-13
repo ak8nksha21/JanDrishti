@@ -63,6 +63,20 @@ export const api = axios.create({
   },
 });
 
+// Request interceptor: attach Bearer token if user is authenticated
+api.interceptors.request.use(
+  (config) => {
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('jandrishti_token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
 // Response interceptor for consistent diagnostic logging and error handling
 api.interceptors.response.use(
   (response) => response,
@@ -346,6 +360,54 @@ export async function fetchTrendSummary(params = {}) {
 
 export async function fetchCompletionTrend(params = {}) {
   const response = await api.get('/trends/completion', { params });
+  return response.data;
+}
+
+/* ==========================================================================
+   17. Optional Authentication & Identity Endpoints
+   ========================================================================== */
+
+/**
+ * Register a new user account (optional identity)
+ */
+export async function signupUser({ name, email, password }) {
+  const response = await api.post('/auth/signup', { name, email, password });
+  return response.data;
+}
+
+/**
+ * Log in with existing user credentials
+ */
+export async function loginUser({ email, password }) {
+  const response = await api.post('/auth/login', { email, password });
+  return response.data;
+}
+
+/**
+ * Log out of current session
+ */
+export async function logoutUser() {
+  try {
+    const response = await api.post('/auth/logout');
+    return response.data;
+  } catch (e) {
+    return { message: 'Logged out' };
+  }
+}
+
+/**
+ * Fetch profile for the currently authenticated user
+ */
+export async function getCurrentUser() {
+  const response = await api.get('/auth/me');
+  return response.data;
+}
+
+/**
+ * Fetch activity history for the currently authenticated user
+ */
+export async function getUserActivity() {
+  const response = await api.get('/auth/activity');
   return response.data;
 }
 

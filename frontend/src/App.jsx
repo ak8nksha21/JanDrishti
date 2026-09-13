@@ -4,6 +4,8 @@ import TopNavbar from './components/layout/TopNavbar';
 import Footer from './components/layout/Footer';
 import GlobalSearchModal from './components/layout/GlobalSearchModal';
 import SyncModal from './components/layout/SyncModal';
+import AuthModal from './components/auth/AuthModal';
+import { AuthProvider } from './context/AuthContext';
 
 // Pages
 import Dashboard from './pages/Dashboard';
@@ -12,6 +14,8 @@ import WorkDetails from './pages/WorkDetails';
 import MPs from './pages/MPs';
 import MPDetails from './pages/MPDetails';
 import Analytics from './pages/Analytics';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
 
 import { checkHealth } from './services/status';
 
@@ -21,6 +25,8 @@ function AppContent() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isSyncOpen, setIsSyncOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [authMode, setAuthMode] = useState('login');
 
   const [apiStatus, setApiStatus] = useState({ isOnline: true, latencyMs: 18 });
   const [lastSyncTime, setLastSyncTime] = useState(null);
@@ -87,6 +93,12 @@ function AppContent() {
     if (path === '/analytics') {
       return <Analytics />;
     }
+    if (path === '/login') {
+      return <Login />;
+    }
+    if (path === '/signup') {
+      return <Signup />;
+    }
 
     // 404 Fallback
     return (
@@ -111,6 +123,10 @@ function AppContent() {
       <TopNavbar
         onOpenSearch={() => setIsSearchOpen(true)}
         onOpenSync={() => setIsSyncOpen(true)}
+        onOpenAuth={(mode) => {
+          setAuthMode(mode || 'login');
+          setIsAuthOpen(true);
+        }}
         isSyncing={isSyncing}
         apiStatus={apiStatus}
         lastSyncTime={lastSyncTime}
@@ -138,6 +154,13 @@ function AppContent() {
         onSyncComplete={handleSyncComplete}
       />
 
+      <AuthModal
+        isOpen={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
+        initialMode={authMode}
+        onSuccess={(msg) => showToast(msg)}
+      />
+
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 p-4 rounded-2xl bg-[#44312A] border border-[#504F47] shadow-2xl text-xs font-semibold text-[#E7DDCA] flex items-center gap-3 backdrop-blur-md animate-in fade-in slide-in-from-bottom-3 duration-300">
@@ -152,7 +175,9 @@ function AppContent() {
 export default function App() {
   return (
     <RouterProvider>
-      <AppContent />
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
     </RouterProvider>
   );
 }

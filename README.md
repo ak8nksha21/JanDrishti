@@ -116,6 +116,25 @@ The database models are designed strictly around actual fields discovered from t
 * `source` (String)
 * `last_updated` (DateTime)
 
+### `users`
+* `id` (Integer PK, autoincrement)
+* `name` (String(128))
+* `email` (String(255), Unique, Indexed)
+* `password_hash` (String(255), bcrypt hashed, never plaintext)
+* `created_at` / `updated_at` (DateTime UTC)
+* `last_login_at` (DateTime UTC, nullable)
+
+### `user_activities`
+* `id` (Integer PK, autoincrement)
+* `user_id` (Integer, Indexed, nullable)
+* `user_email` (String(255), nullable)
+* `action` (String(128), Indexed)
+* `endpoint` / `method` (String)
+* `status_code` (Integer, nullable)
+* `ip_address` (String(64), nullable)
+* `metadata_json` (JSON, nullable)
+* `created_at` (DateTime UTC, Indexed)
+
 ---
 
 ## 4. Quickstart & Setup
@@ -166,10 +185,37 @@ Interactive Swagger API docs are available at **[http://localhost:8000/docs](htt
 | `GET` | `/api/mps` | Paginated MP financial summaries (Filters: `constituency`, `state`, `house`, `page`, `limit`) |
 | `GET` | `/api/mps/{id}` | Detailed financial & execution summary for a single MP (by database `id` or `source_id`) |
 | `GET` | `/api/dashboard` | Live aggregate analytics computed directly from stored PostgreSQL records |
+| `POST` | `/api/auth/signup` | Register new user (Optional identity; passwords hashed with bcrypt) |
+| `POST` | `/api/auth/login` | Authenticate user; returns JWT Bearer token and updates `last_login_at` |
+| `POST` | `/api/auth/logout` | Clear user session state |
+| `GET` | `/api/auth/me` (or `/auth/me`) | Retrieve currently authenticated user profile |
+| `GET` | `/api/auth/activity` | Retrieve activity audit history for authenticated user |
 
 ---
 
-## 6. Current Limitations & Future Data Requirements
+## 6. Optional Authentication & User Identity Foundation
+
+### Philosophy: Identity, Not Authorization
+Authentication in JanDrishti exists **solely to establish user identity** so that civic observations, audit events, and user activity can be recorded in PostgreSQL now and in the future.
+
+* **Guest Access is 100% Unrestricted:** All platform features—works explorer, MP scorecards, India map, ML anomaly detectors, financial metrics, and dashboard analytics—are completely public. Unauthenticated users are never blocked or prompted with a 401 Unauthorized on public endpoints.
+* **Optional Login:** Logging in provides an authenticated JWT session, allowing the backend middleware (`OptionalAuthMiddleware`) to attach `request.state.user` and record user events to `user_activities` table.
+* **Security:** Passwords are never stored in plaintext and are hashed using bcrypt with salt rounds. Tokens use PyJWT with configurable expirations. Password hashes are never returned across any API endpoint.
+
+### Configuration
+Configure the following in `.env`:
+```bash
+AUTH_SECRET_KEY=your-production-secret-key-2026
+AUTH_ALGORITHM=HS256
+AUTH_ACCESS_TOKEN_EXPIRE_MINUTES=10080  # 7 days
+```
+
+### Database Initialization
+Database tables (`users`, `user_activities`) are automatically created on backend startup via SQLAlchemy `Base.metadata.create_all(bind=engine)` inside the FastAPI lifespan handler.
+
+---
+
+## 7. Current Limitations & Future Data Requirements
 
 * **Itemized Works Granularity:** Current Empowered Indian public APIs provide completed works for specific constituencies. Ingestion of ongoing/sanctioned individual work items is supported by the data schema as new source endpoints become available.
 * **Cost Anomaly vs Cost Overrun:** The currently available data provides actual final completed cost. Because initial sanctioned estimates at the itemized level are not consistently exposed in the public completed works feed, cost variance analysis is categorized as **Cost Anomaly** detection rather than claiming "cost overrun".

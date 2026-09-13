@@ -15,6 +15,11 @@ class Settings(BaseSettings):
     BACKEND_HOST: str = "0.0.0.0"
     BACKEND_PORT: int = 8000
 
+    # Optional Authentication Configuration
+    AUTH_SECRET_KEY: str = "jandrishti-parliamentary-oversight-secret-key-2026"
+    AUTH_ALGORITHM: str = "HS256"
+    AUTH_ACCESS_TOKEN_EXPIRE_MINUTES: int = 10080  # 7 days
+
     @property
     def database_url(self) -> str:
         if self.DATABASE_URL:
